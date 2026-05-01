@@ -12,6 +12,9 @@ export class Renderer {
     });
     this.gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.gl.outputColorSpace = THREE.SRGBColorSpace;
+    this.gl.toneMapping = THREE.ACESFilmicToneMapping;
+    this.gl.toneMappingExposure = 1.05;
+    this.gl.setClearColor(0x000000, 0);
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }

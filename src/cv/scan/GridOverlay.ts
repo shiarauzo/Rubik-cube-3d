@@ -38,28 +38,30 @@ export class GridOverlay {
     ctx.setTransform(-1, 0, 0, 1, this.canvas.width, 0);
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+    ctx.lineWidth = 1.25;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
     const cell = size / 3;
     for (let r = 0; r < 3; r++) {
       for (let c = 0; c < 3; c++) {
         const cx = x + c * cell;
         const cy = y + r * cell;
-        ctx.fillRect(cx, cy, cell, cell);
-        ctx.strokeRect(cx, cy, cell, cell);
+        ctx.strokeRect(cx + 1, cy + 1, cell - 2, cell - 2);
       }
     }
+    // Soft outer rim
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.strokeRect(x - 4, y - 4, size + 8, size + 8);
     ctx.restore();
 
     // Label (drawn unmirrored)
     ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(0, 0, this.canvas.width, 28);
-    ctx.fillStyle = '#fff';
-    ctx.font = '13px ui-sans-serif, system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(20, 22, 28, 0.55)';
+    ctx.fillRect(0, 0, this.canvas.width, 26);
+    ctx.fillStyle = '#fafaf7';
+    ctx.font = "500 12px 'Inter', ui-sans-serif, system-ui, sans-serif";
     ctx.textBaseline = 'middle';
-    ctx.fillText(FACE_LABELS[face], 8, 14);
+    ctx.fillText(FACE_LABELS[face], 10, 13);
     ctx.restore();
   }
 

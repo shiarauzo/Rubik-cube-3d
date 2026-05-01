@@ -2,25 +2,57 @@ import * as THREE from 'three';
 
 export function createScene(): THREE.Scene {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0b0d12);
+  // Background is provided by CSS so the canvas can sit on the ivory gradient.
+  scene.background = null;
 
-  const ambient = new THREE.AmbientLight(0xffffff, 0.55);
+  const ambient = new THREE.AmbientLight(0xfffaf0, 0.7);
   scene.add(ambient);
 
-  const key = new THREE.DirectionalLight(0xffffff, 0.85);
-  key.position.set(5, 7, 6);
+  const key = new THREE.DirectionalLight(0xfff5e6, 0.6);
+  key.position.set(4, 7, 5);
   scene.add(key);
 
-  const fill = new THREE.DirectionalLight(0x99aaff, 0.35);
-  fill.position.set(-6, -2, -4);
+  const fill = new THREE.DirectionalLight(0xe6efff, 0.25);
+  fill.position.set(-5, -1, -3);
   scene.add(fill);
+
+  scene.add(makeContactShadow());
 
   return scene;
 }
 
 export function createCamera(aspect: number): THREE.PerspectiveCamera {
-  const cam = new THREE.PerspectiveCamera(40, aspect, 0.1, 100);
-  cam.position.set(5.5, 5.0, 7.0);
+  const cam = new THREE.PerspectiveCamera(38, aspect, 0.1, 100);
+  cam.position.set(5.4, 4.6, 6.8);
   cam.lookAt(0, 0, 0);
   return cam;
+}
+
+function makeContactShadow(): THREE.Mesh {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const grad = ctx.createRadialGradient(size / 2, size / 2, size * 0.05, size / 2, size / 2, size / 2);
+  grad.addColorStop(0, 'rgba(20, 22, 28, 0.45)');
+  grad.addColorStop(0.45, 'rgba(20, 22, 28, 0.18)');
+  grad.addColorStop(1, 'rgba(20, 22, 28, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+
+  const geo = new THREE.PlaneGeometry(5, 5);
+  const mat = new THREE.MeshBasicMaterial({
+    map: tex,
+    transparent: true,
+    depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = -1.6;
+  mesh.renderOrder = -1;
+  return mesh;
 }

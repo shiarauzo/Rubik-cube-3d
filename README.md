@@ -1,159 +1,182 @@
-# Rubik 3D · Computer Vision
+# Rubik 3D · Computer Vision Edition
 
-Cubo Rubik 3D jugable en el navegador con tres modos de control: ratón, gestos
-de manos por webcam, y escaneo de un cubo físico real. Incluye solver de
-Kociemba (algoritmo two-phase) que calcula la solución y la anima.
+A minimalist 3D Rubik's cube that runs in the browser. Solve it with the
+mouse, with hand gestures captured by your webcam, or scan a real cube and
+let the built-in Kociemba solver do the rest.
 
-## Características
+> Vite · TypeScript · Three.js · MediaPipe · cubejs
 
-- **Cubo 3D** con [Three.js](https://threejs.org/): 27 cubies, animaciones de
-  giro suaves (slerp con ease-in-out), cámara orbital con pinch-zoom.
-- **Modo Gestos** (`MediaPipe HandLandmarker`): vocabulario a dos manos.
-  - Izquierda elige cara: índice ↑ `U`, → `R`, ↓ `D`, ← `L`; palma hacia ti `F`,
-    palma hacia fuera `B`.
-  - Derecha confirma: 👍 / swipe der → `CW`; 👎 / swipe izq → `CCW`.
-  - Debounce de 5 frames + cooldown de 350 ms para evitar falsos positivos.
-- **Modo Escaneo**: overlay 3x3 sobre la webcam; el usuario muestra las 6 caras
-  en orden `U R F D L B`. Para cada celda se toman 5 parches y se hace mediana
-  para descartar reflejos. Un clasificador HSV anclado a los centros se adapta
-  a la luz de la sesión.
-- **Solver Kociemba** (`cubejs`) en un Web Worker para no bloquear la UI durante
-  el build de las tablas (~1–4 s).
-- **HUD**: temporizador, contador de movimientos, mezclar, reset, resolver,
-  toggle de modo y de cámara.
+---
+
+## Quick start
+
+```bash
+npm install        # installs deps + copies MediaPipe wasm + downloads the hand model
+npm run dev        # http://localhost:5173
+```
+
+Production build:
+
+```bash
+npm run build      # type-check + bundle to dist/
+npm run preview    # preview the built bundle
+```
+
+The webcam requires HTTPS or `localhost`. GitHub Pages works because it
+serves over HTTPS.
+
+---
+
+## Play modes
+
+### Mouse
+Drag to orbit, wheel/pinch to zoom. Keyboard shortcuts trigger every move:
+lowercase = standard turn, uppercase = prime.
+
+| Key | Move | Key | Move |
+|---|---|---|---|
+| `r` / `R` | R / R' | `u` / `U` | U / U' |
+| `f` / `F` | F / F' | `d` / `D` | D / D' |
+| `l` / `L` | L / L' | `b` / `B` | B / B' |
+
+### Hand gestures
+Two-handed vocabulary built on top of MediaPipe HandLandmarker (GPU
+delegate). The left hand selects a face, the right hand commits the
+direction.
+
+| Left hand | Face |
+|---|---|
+| Index pointing up | **U** |
+| Index pointing right | **R** |
+| Index pointing down | **D** |
+| Index pointing left | **L** |
+| Open palm towards you | **F** |
+| Open palm away | **B** |
+
+| Right hand | Direction |
+|---|---|
+| Thumb up · swipe right | CW (R, U, F…) |
+| Thumb down · swipe left | CCW (R', U', F'…) |
+| Closed fist (left hand) | Cancel selection |
+
+A gesture must hold for ~5 frames before it registers, with a 350 ms
+cooldown after each commit to avoid runaway turns.
+
+### Scan a real cube
+Show each of the six faces inside the 3×3 overlay in the order
+**U → R → F → D → L → B**. Press <kbd>Space</kbd> or the capture button.
+For each cell the sampler takes five small patches and uses the median to
+discard glare. The classifier identifies the six centres in HSV space and
+labels every other sticker by adapted distance to those references.
+
+When the scan completes the virtual cube redraws and the **Solve** button
+animates the Kociemba solution.
+
+> Scanning works best with even, frontal lighting. If the colour counts
+> don't add up the app restarts the scan and tells you which face failed.
+
+---
 
 ## Stack
 
-| Capa | Paquete |
+| Layer | Package |
 |---|---|
 | Build | Vite 5, TypeScript 5 (strict) |
-| 3D | `three`, `OrbitControls` |
-| CV | `@mediapipe/tasks-vision` (delegado GPU) |
-| Solver | `cubejs` |
+| 3D | `three` + `OrbitControls` + `RoundedBoxGeometry` |
+| CV | `@mediapipe/tasks-vision` (HandLandmarker, GPU) |
+| Solver | `cubejs` (Kociemba two-phase, in a Web Worker) |
+| Fonts | Inter · JetBrains Mono |
 
-## Requisitos
+---
 
-- Node.js ≥ 20
-- npm ≥ 10
-- Navegador moderno con WebGL2 y WebAssembly (Chrome / Edge / Firefox / Safari).
-- Webcam para los modos `Gestos` y `Escanear`.
-- `getUserMedia` requiere `https://` o `http://localhost`. En GitHub Pages
-  funciona porque sirve por HTTPS.
-
-## Instalación y uso
-
-```bash
-npm install        # instala dependencias y dispara el script de assets
-npm run dev        # abre http://localhost:5173
-```
-
-El script `scripts/copy-mediapipe-assets.mjs` (ejecutado por `predev` y
-`prebuild`):
-
-1. Copia los `.wasm`/`.js` de `@mediapipe/tasks-vision` a `public/wasm/`.
-2. Descarga `hand_landmarker.task` (~8 MB) a `public/models/` desde el storage
-   oficial de MediaPipe la primera vez.
-
-Si no tienes red al instalar, coloca manualmente el modelo en
-`public/models/hand_landmarker.task`.
-
-### Comandos
-
-```bash
-npm run dev        # dev server con HMR
-npm run build      # type-check + build de producción a dist/
-npm run preview    # sirve dist/ localmente
-```
-
-## Controles
-
-### Ratón
-- Arrastrar = orbitar la cámara.
-- Rueda / pinch = zoom.
-- Atajos de teclado: `r`/`R` = `R`/`R'`, `u`/`U` = `U`/`U'`, etc.
-  (minúscula = sentido normal, mayúscula = primo).
-
-### Modo Gestos
-Activa la cámara desde la barra y selecciona "Gestos". Coloca las dos manos
-frente a la cámara. La selección de cara se confirma cuando mantienes el
-gesto durante ~5 frames; el HUD lo notifica con un toast.
-
-### Modo Escaneo
-Activa "Escanear". Sigue las indicaciones del panel inferior: muestra cada
-cara dentro del recuadro 3x3 y pulsa **Espacio** o el botón **Capturar**. Al
-completar las 6 caras la app reconstruye el estado, vuelve a modo ratón y
-puedes pulsar **Resolver** para que anime la solución.
-
-> **Tip**: usa luz frontal uniforme. Si los conteos de color salen mal, la app
-> reinicia el escaneo y muestra qué color falló.
-
-## Arquitectura
+## Project layout
 
 ```
 src/
-├─ app/            App raíz, EventBus tipado
-├─ cube/           CubeModel (wrap de cubejs), CubeView (27 cubies),
-│                  MoveEngine (animaciones), Notation, Scrambler
-├─ render/         Renderer, Scene, OrbitCam
-├─ solver/         Solver (proxy) + solver.worker.ts (Kociemba)
+├─ app/            App shell + typed event bus
+├─ cube/           CubeModel (cubejs wrapper) · CubeView · MoveEngine
+│                  · Notation · Scrambler · FaceletMap
+├─ render/         Renderer · Scene · OrbitCam
+├─ solver/         Solver proxy + solver.worker.ts (Kociemba)
 ├─ cv/
-│  ├─ Webcam.ts    getUserMedia + permisos
-│  ├─ HandTracker.ts
-│  ├─ gestures/    Classifier (landmarks → forma) + Mapper (state machine)
-│  └─ scan/        GridOverlay, ColorSampler, ColorClassifier, ScanController
-├─ hud/            Hud, Timer, MoveCounter, hud.css
-├─ util/           color, math, assert
+│  ├─ Webcam.ts        getUserMedia + permissions
+│  ├─ HandTracker.ts   MediaPipe wrapper
+│  ├─ gestures/        Classifier + state-machine Mapper
+│  └─ scan/            GridOverlay · ColorSampler · ColorClassifier · ScanController
+├─ hud/            Hud · Timer · MoveCounter · hud.css
+├─ util/           color · math · assert
 └─ types.ts
 ```
 
-### Sincronización modelo ↔ vista
+<details>
+<summary>How the visual cube stays in sync with the logical state</summary>
 
-El estado lógico vive en `CubeModel` (sobre `cubejs`). Cada giro:
+The single source of truth is `CubeModel`, which wraps `cubejs`. Every
+turn:
 
-1. `MoveEngine.queueMove(move)` reparenta los 9 cubies del layer bajo un
-   pivot transitorio.
-2. Anima `pivot.quaternion` con slerp + ease (~220 ms; 308 ms para `2`).
-3. Al terminar, hornea la transformación en cada cubie, snapea a la rejilla
-   entera y llama `model.applyMove(move)`. El modelo nunca cambia a mitad de
-   animación.
+1. `MoveEngine.queueMove(move)` reparents the layer's nine cubies under
+   a transient pivot group.
+2. `pivot.quaternion` is animated with quart easing (~240 ms; 320 ms for
+   half turns) using slerp.
+3. When the animation ends, the cubie transforms are baked, positions
+   snap to the integer lattice, and `model.applyMove(move)` advances the
+   logical state. The model never changes mid-animation.
 
-Tras un escaneo, `model.setFromStickers(...)` reemplaza el estado lógico y
-`view.repaintFromFacelets(...)` re-skinea cada cubie en su posición home,
-descartando rotaciones previas.
+After a scan, `model.setFromStickers(...)` replaces the logical state
+and `view.repaintFromFacelets(...)` re-skins each cubie at its home
+position, discarding any prior rotations.
+</details>
 
-### Convenciones
+---
 
-- Facelets en orden URFDLB de cubejs (54 caracteres con letras `U R F D L B`).
-- Esquema cromático estándar: U=blanco, R=rojo, F=verde, D=amarillo, L=naranja,
-  B=azul.
-- `R`, `R'`, `R2` para giros de 90°/-90°/180° (idem U F D L B).
+## Conventions
 
-## Despliegue (GitHub Pages)
+- Facelets follow cubejs' URFDLB order (54 chars, letters `U R F D L B`).
+- Standard colour scheme: U white · R red · F green · D yellow · L orange · B blue.
+- `R`, `R'`, `R2` denote 90° / -90° / 180° turns (same for U F D L B).
 
-`vite.config.ts` usa `base: './'` para rutas relativas. Para publicar:
+---
+
+## Deploy
+
+`vite.config.ts` ships with `base: './'`, so the bundle is portable.
 
 ```bash
 npm run build
-# Sube el contenido de dist/ a la rama gh-pages.
+# Push the contents of dist/ to the gh-pages branch.
 ```
 
-El navegador necesita HTTPS para acceder a la webcam.
+The browser needs HTTPS for `getUserMedia`.
+
+---
 
 ## Gotchas
 
-- Si MediaPipe falla al cargar, revisa que `public/wasm/` y
-  `public/models/hand_landmarker.task` existen. El error es críptico
-  ("Failed to fetch").
-- Permiso de cámara: la app distingue `NotAllowedError` y `NotFoundError` con
-  mensajes claros en el toast.
-- El video se muestra espejado vía CSS (`scaleX(-1)`) pero los landmarks NO se
-  espejan al alimentarlos a MediaPipe — `handedness` ya viene correcta para la
-  entrada natural.
-- Half-turns del solver (`R2`) se expanden a `[R, R]` antes de animar, así el
-  motor no necesita una ruta de 180° dedicada.
-- La detección de manos se limita a ~30 Hz (1 de cada 2 frames) para mantener
-  60 fps de render.
+- If MediaPipe fails to load, check that `public/wasm/` exists and that
+  `public/models/hand_landmarker.task` was downloaded. Errors here surface
+  as a generic *"Failed to fetch"*.
+- Camera permission errors distinguish `NotAllowedError` and
+  `NotFoundError` with explicit toasts.
+- The video preview is mirrored via CSS (`scaleX(-1)`); landmarks fed to
+  MediaPipe are **not** mirrored, since `handedness` already assumes the
+  natural orientation.
+- Half turns (`R2`) returned by the solver are expanded to two quarter
+  turns before queueing, so the animation engine doesn't need a 180°
+  path of its own.
+- HandLandmarker runs at ~30 Hz (every other frame) to keep the render
+  loop at 60 fps even on mid-range hardware.
 
-## Licencia
+---
 
-MIT — ver `LICENSE`.
+## Roadmap
+
+- Optional dark theme.
+- WebGPU renderer when stable.
+- One-handed gesture mode for mobile.
+- Local persistence of times and scrambles.
+
+---
+
+## License
+
+MIT — see `LICENSE`.
