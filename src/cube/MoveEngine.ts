@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Face, Move } from '../types';
 import { CubeModel } from './CubeModel';
 import { CubeView, type Cubie } from './CubeView';
-import { easeInOutCubic } from '../util/math';
+import { easeInOutQuart } from '../util/math';
 import { bus } from '../app/events';
 
 const FACE_AXIS: Record<Face, THREE.Vector3> = {
@@ -14,7 +14,7 @@ const FACE_AXIS: Record<Face, THREE.Vector3> = {
   B: new THREE.Vector3(0, 0, -1),
 };
 
-const ANIM_MS = 220;
+const ANIM_MS = 240;
 
 interface QueuedMove {
   move: Move;
@@ -91,14 +91,14 @@ export class MoveEngine {
     this.pivot.quaternion.identity();
 
     const start = performance.now();
-    const duration = suffix === '2' ? ANIM_MS * 1.4 : ANIM_MS;
+    const duration = suffix === '2' ? ANIM_MS * 1.35 : ANIM_MS;
     const fromQ = new THREE.Quaternion();
     const toQ = new THREE.Quaternion().setFromAxisAngle(axis, angle);
 
     await new Promise<void>((resolve) => {
       const tick = () => {
         const t = Math.min(1, (performance.now() - start) / duration);
-        const eased = easeInOutCubic(t);
+        const eased = easeInOutQuart(t);
         const q = new THREE.Quaternion().slerpQuaternions(fromQ, toQ, eased);
         this.pivot.quaternion.copy(q);
         if (t < 1) requestAnimationFrame(tick);

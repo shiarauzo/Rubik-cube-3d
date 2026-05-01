@@ -18,10 +18,10 @@ export const FACE_COLOR: Record<Face, StickerColor> = {
 };
 
 export const COLOR_HEX: Record<StickerColor, number> = {
-  W: 0xf5f5f5,
-  Y: 0xffd400,
-  R: 0xc62828,
-  O: 0xef6c00,
-  G: 0x2e7d32,
-  B: 0x1565c0,
+  W: 0xf7f5ee,
+  Y: 0xd4a017,
+  R: 0xb91c1c,
+  O: 0xc2570c,
+  G: 0x4d7c0f,
+  B: 0x1e40af,
 };

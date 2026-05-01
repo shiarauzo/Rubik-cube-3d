@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { Face, StickerColor } from '../types';
 import { COLOR_HEX, FACES } from '../types';
 import { FACELET_MAP, faceletGlobalIndex, type Vec3 } from './FaceletMap';
@@ -12,8 +13,10 @@ export interface Cubie {
 }
 
 const CUBIE_SIZE = 0.96;
-const STICKER_SIZE = 0.86;
-const STICKER_INSET = 0.501;
+const CUBIE_RADIUS = 0.06;
+const STICKER_SIZE = 0.84;
+const STICKER_RADIUS = 0.09;
+const STICKER_INSET = 0.502;
 
 const FACE_NORMAL: Record<Face, Vec3> = {
   U: [0, 1, 0],
@@ -25,27 +28,43 @@ const FACE_NORMAL: Record<Face, Vec3> = {
 };
 
 function makeCubieBody(): THREE.Mesh {
-  const geo = new THREE.BoxGeometry(CUBIE_SIZE, CUBIE_SIZE, CUBIE_SIZE);
+  const geo = new RoundedBoxGeometry(CUBIE_SIZE, CUBIE_SIZE, CUBIE_SIZE, 4, CUBIE_RADIUS);
   const mat = new THREE.MeshStandardMaterial({
-    color: 0x111418,
-    roughness: 0.6,
-    metalness: 0.05,
+    color: 0x1a1a1f,
+    roughness: 0.78,
+    metalness: 0.02,
   });
   return new THREE.Mesh(geo, mat);
 }
 
+function roundedSquareShape(size: number, radius: number): THREE.Shape {
+  const s = size / 2;
+  const r = Math.min(radius, s);
+  const shape = new THREE.Shape();
+  shape.moveTo(-s + r, -s);
+  shape.lineTo(s - r, -s);
+  shape.quadraticCurveTo(s, -s, s, -s + r);
+  shape.lineTo(s, s - r);
+  shape.quadraticCurveTo(s, s, s - r, s);
+  shape.lineTo(-s + r, s);
+  shape.quadraticCurveTo(-s, s, -s, s - r);
+  shape.lineTo(-s, -s + r);
+  shape.quadraticCurveTo(-s, -s, -s + r, -s);
+  return shape;
+}
+
+const STICKER_GEOMETRY = new THREE.ShapeGeometry(roundedSquareShape(STICKER_SIZE, STICKER_RADIUS), 6);
+
 function makeStickerMesh(color: StickerColor, face: Face): THREE.Mesh {
-  const geo = new THREE.PlaneGeometry(STICKER_SIZE, STICKER_SIZE);
   const mat = new THREE.MeshStandardMaterial({
     color: COLOR_HEX[color],
-    roughness: 0.45,
-    metalness: 0.0,
+    roughness: 0.4,
+    metalness: 0.05,
     side: THREE.DoubleSide,
   });
-  const mesh = new THREE.Mesh(geo, mat);
+  const mesh = new THREE.Mesh(STICKER_GEOMETRY, mat);
   const [nx, ny, nz] = FACE_NORMAL[face];
   mesh.position.set(nx * STICKER_INSET, ny * STICKER_INSET, nz * STICKER_INSET);
-  // Orient the plane so its normal matches the face direction
   const axis = new THREE.Vector3(nx, ny, nz);
   const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis);
   mesh.quaternion.copy(quat);
@@ -103,7 +122,6 @@ export class CubeView {
       cubie.mesh.quaternion.identity();
       cubie.stickers.forEach((s) => {
         cubie.mesh.remove(s);
-        s.geometry.dispose();
         (s.material as THREE.Material).dispose();
       });
       cubie.stickers.clear();
