@@ -1,0 +1,23 @@
+{
+  "name": "rubik-cube-3d-cv",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "prebuild": "node scripts/copy-mediapipe-assets.mjs",
+    "predev": "node scripts/copy-mediapipe-assets.mjs",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^0.10.22",
+    "cubejs": "^1.3.2",
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.169.0",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.10"
+  }
+}

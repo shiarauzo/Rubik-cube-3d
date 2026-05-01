@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0d12" />
+    <title>Rubik 3D · Computer Vision</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/src/hud/hud.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="three-canvas"></canvas>
+      <div id="cv-layer">
+        <video id="cv-video" playsinline muted></video>
+        <canvas id="cv-overlay"></canvas>
+      </div>
+      <div id="hud-root"></div>
+      <div id="toast"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
