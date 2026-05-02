@@ -44,14 +44,11 @@ export class HandRotation {
     const rightHand = landmarks.get('Right');
     const leftHand = landmarks.get('Left');
 
-    // Check if both hands are open palms → reset to front view
-    const rightHandShape = hands?.find(h => h.hand === 'Right');
+    // Check if left hand is open palm → snap to nearest face
     const leftHandShape = hands?.find(h => h.hand === 'Left');
-    const isRightOpen = rightHandShape?.shape === 'palmIn' || rightHandShape?.shape === 'palmOut';
-    const isLeftOpen = leftHandShape?.shape === 'palmIn' || leftHandShape?.shape === 'palmOut';
-    const bothHandsOpen = rightHand && leftHand && isRightOpen && isLeftOpen;
+    const isLeftOpen = leftHand && (leftHandShape?.shape === 'palmIn' || leftHandShape?.shape === 'palmOut');
 
-    if (bothHandsOpen) {
+    if (isLeftOpen) {
       // Snap to nearest face and stay still
       const snappedY = snapToNearest(this.currentY, Y_ANGLES);
       const snappedX = snapToNearest(this.currentX, X_ANGLES);
