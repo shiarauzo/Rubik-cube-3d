@@ -9,8 +9,6 @@ export interface HudHandlers {
   onSolve: () => void;
   onModeChange: (m: Mode) => void;
   onCameraToggle: () => void;
-  onScanCapture: () => void;
-  onScanRestart: () => void;
 }
 
 export class Hud {
@@ -20,8 +18,7 @@ export class Hud {
   private cameraBtn: HTMLButtonElement;
   private solveBtn: HTMLButtonElement;
   private scrambleBtn: HTMLButtonElement;
-  private scanPanel: HTMLDivElement;
-  private gestureHint: HTMLDivElement;
+  private arHint: HTMLDivElement;
   private toastEl: HTMLDivElement;
   private toastTimeout: number | null = null;
 
@@ -36,8 +33,7 @@ export class Hud {
       <button class="hud-btn primary" id="hud-solve">Resolver</button>
       <div class="hud-mode" id="hud-mode">
         <button data-mode="mouse" class="active">Ratón</button>
-        <button data-mode="gestures">Gestos</button>
-        <button data-mode="scan">Escanear</button>
+        <button data-mode="ar">AR</button>
       </div>
       <button class="hud-btn" id="hud-camera">Cámara on</button>
     `;
@@ -57,42 +53,25 @@ export class Hud {
 
     this.modeButtons = {
       mouse: bar.querySelector<HTMLButtonElement>('button[data-mode="mouse"]')!,
-      gestures: bar.querySelector<HTMLButtonElement>('button[data-mode="gestures"]')!,
-      scan: bar.querySelector<HTMLButtonElement>('button[data-mode="scan"]')!,
-    };
-    for (const m of ['mouse', 'gestures', 'scan'] as Mode[]) {
+      ar: bar.querySelector<HTMLButtonElement>('button[data-mode="ar"]')!,
+    } as Record<Mode, HTMLButtonElement>;
+    for (const m of ['mouse', 'ar'] as Mode[]) {
       this.modeButtons[m].addEventListener('click', () => handlers.onModeChange(m));
     }
 
     this.cameraBtn = bar.querySelector<HTMLButtonElement>('#hud-camera')!;
     this.cameraBtn.addEventListener('click', handlers.onCameraToggle);
 
-    this.scanPanel = document.createElement('div');
-    this.scanPanel.id = 'scan-panel';
-    this.scanPanel.innerHTML = `
-      <h3>Escaneo del cubo</h3>
-      <div class="progress" id="scan-progress"></div>
-      <p id="scan-msg">Muestra la cara <b>U</b> (blanca) hacia la cámara y pulsa <kbd>Espacio</kbd> o el botón.</p>
-      <div class="actions">
-        <button class="hud-btn primary" id="scan-capture">Capturar</button>
-        <button class="hud-btn" id="scan-restart">Reiniciar</button>
-      </div>
-    `;
-    document.getElementById('hud-root')!.appendChild(this.scanPanel);
-    this.scanPanel.querySelector<HTMLButtonElement>('#scan-capture')!.addEventListener('click', handlers.onScanCapture);
-    this.scanPanel.querySelector<HTMLButtonElement>('#scan-restart')!.addEventListener('click', handlers.onScanRestart);
-
-    this.gestureHint = document.createElement('div');
-    this.gestureHint.id = 'gesture-hint';
-    this.gestureHint.innerHTML = `
-      <h3>Modo gestos (dos manos)</h3>
+    this.arHint = document.createElement('div');
+    this.arHint.id = 'gesture-hint';
+    this.arHint.innerHTML = `
+      <h3>Modo AR</h3>
       <p>
-        <b>Izquierda</b> elige cara: índice ↑ <code>U</code>, → <code>R</code>, ↓ <code>D</code>, ← <code>L</code>;
-        palma hacia ti <code>F</code>, palma fuera <code>B</code>.<br/>
-        <b>Derecha</b> confirma: 👍 / swipe der → <b>CW</b>; 👎 / swipe izq → <b>CCW</b>.
+        Mueve tu <b>mano derecha</b> para rotar el cubo.<br/>
+        <b>Mano abierta</b> → vista frontal.
       </p>
     `;
-    document.getElementById('hud-root')!.appendChild(this.gestureHint);
+    document.getElementById('hud-root')!.appendChild(this.arHint);
 
     this.toastEl = document.getElementById('toast') as HTMLDivElement;
 
@@ -140,22 +119,11 @@ export class Hud {
 
   setMode(m: Mode): void {
     for (const k of Object.keys(this.modeButtons) as Mode[]) {
-      this.modeButtons[k].classList.toggle('active', k === m);
+      if (this.modeButtons[k]) {
+        this.modeButtons[k].classList.toggle('active', k === m);
+      }
     }
-    this.scanPanel.classList.toggle('active', m === 'scan');
-    this.gestureHint.classList.toggle('active', m === 'gestures');
-  }
-
-  setScanProgress(faceIndex: number, total: number, msg: string): void {
-    const prog = this.scanPanel.querySelector<HTMLDivElement>('#scan-progress')!;
-    prog.innerHTML = '';
-    for (let i = 0; i < total; i++) {
-      const span = document.createElement('span');
-      if (i < faceIndex) span.className = 'done';
-      else if (i === faceIndex) span.className = 'current';
-      prog.appendChild(span);
-    }
-    this.scanPanel.querySelector<HTMLElement>('#scan-msg')!.innerHTML = msg;
+    this.arHint.classList.toggle('active', m === 'ar');
   }
 
   toast(message: string, kind: 'info' | 'warn' | 'error' = 'info'): void {

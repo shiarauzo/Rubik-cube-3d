@@ -77,6 +77,13 @@ html, body {
   display: block;
 }
 
+#cv-layer.ar-mode {
+  right: 16px;
+  bottom: 16px;
+  width: 320px;
+  max-width: 40vw;
+}
+
 #cv-video {
   position: absolute;
   inset: 0;
