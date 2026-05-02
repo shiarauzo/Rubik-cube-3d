@@ -51,6 +51,7 @@ function makeContactShadow(): THREE.Mesh {
     depthWrite: false,
   });
   const mesh = new THREE.Mesh(geo, mat);
+  mesh.name = 'contactShadow';
   mesh.rotation.x = -Math.PI / 2;
   mesh.position.y = -1.6;
   mesh.renderOrder = -1;

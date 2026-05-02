@@ -11,9 +11,8 @@ import { Hud } from '../hud/Hud';
 import { Webcam } from '../cv/Webcam';
 import { HandTracker } from '../cv/HandTracker';
 import { GestureClassifier } from '../cv/gestures/GestureClassifier';
-import { GestureMapper } from '../cv/gestures/GestureMapper';
-import { GridOverlay } from '../cv/scan/GridOverlay';
-import { ScanController } from '../cv/scan/ScanController';
+import { HandRotation } from '../cv/gestures/HandRotation';
+import { HandOverlay } from '../cv/HandOverlay';
 import { bus } from './events';
 import type { Mode, Move } from '../types';
 import { expandHalfTurns } from '../cube/Notation';
@@ -32,9 +31,9 @@ export class App {
   private webcam: Webcam;
   private handTracker: HandTracker;
   private gestureClassifier: GestureClassifier;
-  private gestureMapper: GestureMapper;
-  private gridOverlay: GridOverlay;
-  private scanCtl: ScanController;
+  private handRotation: HandRotation;
+  private handOverlay: HandOverlay;
+  private contactShadow: THREE.Mesh | null = null;
 
   private mode: Mode = 'mouse';
   private cvFrame = 0;
@@ -64,8 +63,6 @@ export class App {
       onSolve: () => this.solve(),
       onModeChange: (m) => this.setMode(m),
       onCameraToggle: () => this.toggleCamera(),
-      onScanCapture: () => this.scanCtl.capture(),
-      onScanRestart: () => this.scanCtl.start(),
     });
     this.hud.setMode('mouse');
 
@@ -74,14 +71,17 @@ export class App {
     this.webcam = new Webcam(video);
     this.handTracker = new HandTracker();
     this.gestureClassifier = new GestureClassifier();
-    this.gestureMapper = new GestureMapper({
-      onMove: (m) => this.engine.queueMove(m),
+    this.handRotation = new HandRotation(this.view);
+    this.handOverlay = new HandOverlay(overlay);
+
+    // Find contact shadow in scene for AR mode visibility toggle
+    this.scene.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && obj.name === 'contactShadow') {
+        this.contactShadow = obj;
+      }
     });
-    this.gridOverlay = new GridOverlay(overlay);
-    this.scanCtl = new ScanController(this.webcam, this.gridOverlay, (res) => this.applyScanResult(res));
 
     this.bindKeys();
-    this.bindBus();
 
     window.addEventListener('resize', () => {
       this.camera.aspect = this.renderer.aspect;
@@ -95,18 +95,50 @@ export class App {
 
   private loop = (): void => {
     requestAnimationFrame(this.loop);
-    this.orbit.update();
 
-    if (this.mode === 'gestures' && this.webcam.isOn() && this.handTracker.isReady()) {
+    // Only update orbit controls in non-AR modes
+    if (this.mode !== 'ar') {
+      this.orbit.update();
+    }
+
+    if (this.mode === 'ar' && this.webcam.isOn() && this.handTracker.isReady()) {
       this.cvFrame += 1;
       // Throttle hand detection to ~30 Hz on 60 fps render.
       if (this.cvFrame % 2 === 0) {
         const result = this.handTracker.detect(this.webcam.video, performance.now());
+        if (this.cvFrame % 60 === 0) {
+          console.log('[AR] Detection result:', result?.landmarks?.length ?? 0, 'hands');
+        }
         if (result) {
           const frame = this.gestureClassifier.classify(result, performance.now());
-          this.gestureMapper.process(frame);
+          // Build landmarks map for direct manipulation
+          const landmarksMap = new Map<'Left' | 'Right', import('../cv/gestures/types').Landmark[]>();
+          const allLandmarks: import('../cv/gestures/types').Landmark[][] = [];
+          const isPinching: boolean[] = [];
+
+          if (result.landmarks && result.handedness) {
+            for (let i = 0; i < result.landmarks.length; i++) {
+              const hand = result.handedness[i]?.[0]?.categoryName as 'Left' | 'Right' | undefined;
+              const lm = result.landmarks[i] as import('../cv/gestures/types').Landmark[];
+              if (hand) {
+                landmarksMap.set(hand, lm);
+              }
+              allLandmarks.push(lm);
+              // Check if this hand is pinching
+              const shape = frame.hands.find(h => h.hand === hand);
+              isPinching.push(shape?.shape === 'pinch');
+            }
+          }
+
+          // Draw hand overlay
+          this.handOverlay.draw(allLandmarks, isPinching);
+
+          // Rotate cube with right hand (open palm resets to front)
+          this.handRotation.processFrame(landmarksMap, frame.hands);
         }
       }
+    } else if (this.mode !== 'ar') {
+      this.handOverlay.clear();
     }
 
     this.renderer.render(this.scene, this.camera);
@@ -123,24 +155,10 @@ export class App {
     };
     window.addEventListener('keydown', (e) => {
       if (e.target && (e.target as HTMLElement).tagName === 'INPUT') return;
-      if (e.code === 'Space') {
-        if (this.mode === 'scan') {
-          e.preventDefault();
-          this.scanCtl.capture();
-        }
-        return;
-      }
       const move = map[e.key];
       if (move) {
         this.engine.queueMove(move);
       }
-    });
-  }
-
-  private bindBus(): void {
-    bus.on('scan:progress', ({ faceIndex, total }) => {
-      const label = this.scanCtl.faceLabel();
-      this.hud.setScanProgress(faceIndex, total, `Mostrando: <b>${label}</b>. Pulsa <kbd>Espacio</kbd> o el botón.`);
     });
   }
 
@@ -184,15 +202,27 @@ export class App {
 
   private async setMode(mode: Mode): Promise<void> {
     if (this.mode === mode) return;
+    const prevMode = this.mode;
     this.mode = mode;
     this.hud.setMode(mode);
     const cvLayer = document.getElementById('cv-layer')!;
-    cvLayer.classList.toggle('active', mode !== 'mouse');
-    cvLayer.classList.toggle('scan-mode', mode === 'scan');
+    cvLayer.classList.toggle('active', mode === 'ar');
+    cvLayer.classList.toggle('ar-mode', mode === 'ar');
     bus.emit('mode:changed', { mode });
 
+    // Handle AR mode specifics
+    if (mode === 'ar') {
+      // Hide contact shadow in AR mode
+      if (this.contactShadow) this.contactShadow.visible = false;
+      // Disable orbit controls
+      this.orbit.enabled = false;
+    } else if (prevMode === 'ar') {
+      // Restore from AR mode
+      if (this.contactShadow) this.contactShadow.visible = true;
+      this.orbit.enabled = true;
+    }
+
     if (mode === 'mouse') {
-      this.gridOverlay.clear();
       return;
     }
 
@@ -204,21 +234,20 @@ export class App {
       }
     }
 
-    if (mode === 'gestures') {
+    if (mode === 'ar') {
       try {
+        console.log('[AR] Initializing hand tracker...');
         await this.handTracker.init();
-      } catch {
-        /* error already toasted */
+        console.log('[AR] Hand tracker ready:', this.handTracker.isReady());
+      } catch (e) {
+        console.error('[AR] Hand tracker init failed:', e);
       }
-    } else if (mode === 'scan') {
-      this.scanCtl.start();
     }
   }
 
   private async toggleCamera(): Promise<void> {
     if (this.webcam.isOn()) {
       this.webcam.stop();
-      this.gridOverlay.clear();
       const cvLayer = document.getElementById('cv-layer')!;
       cvLayer.classList.remove('active');
     } else {
@@ -228,18 +257,6 @@ export class App {
       } catch {
         /* error already toasted */
       }
-    }
-  }
-
-  private applyScanResult(res: { stickers54: import('../types').StickerColor[] }): void {
-    try {
-      this.model.setFromStickers(res.stickers54);
-      this.view.repaintFromFacelets(this.model.getFacelets());
-      // re-attach pivot (was inside view.group; group rebuilt? No — repaint reuses cubies)
-      bus.emit('toast', { message: 'Escaneo completado, listo para resolver', kind: 'info' });
-      this.setMode('mouse');
-    } catch (err) {
-      bus.emit('toast', { message: `Estado inválido: ${(err as Error).message}`, kind: 'error' });
     }
   }
 }

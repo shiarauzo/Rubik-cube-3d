@@ -6,7 +6,7 @@ export type Move = `${Face}${Suffix}`;
 
 export type StickerColor = 'W' | 'Y' | 'R' | 'O' | 'G' | 'B';
 
-export type Mode = 'mouse' | 'gestures' | 'scan';
+export type Mode = 'mouse' | 'gestures' | 'scan' | 'ar';
 
 export const FACE_COLOR: Record<Face, StickerColor> = {
   U: 'W',
