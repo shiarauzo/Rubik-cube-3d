@@ -101,6 +101,45 @@ html, body {
   pointer-events: none;
 }
 
+/* Grid overlay for layer selection */
+#grid-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 2px;
+  padding: 8%;
+  pointer-events: none;
+}
+
+#grid-overlay.active {
+  display: grid;
+}
+
+.grid-cell {
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+}
+
+.grid-cell.highlight-row {
+  background: rgba(100, 200, 255, 0.15);
+  border-color: rgba(100, 200, 255, 0.5);
+}
+
+.grid-cell.highlight-col {
+  background: rgba(255, 180, 100, 0.15);
+  border-color: rgba(255, 180, 100, 0.5);
+}
+
+.grid-cell.pinch-active {
+  background: rgba(120, 255, 150, 0.2);
+  border-color: rgba(120, 255, 150, 0.6);
+  transform: scale(0.95);
+}
+
 /* HUD ---------------------------------------------------------------------- */
 
 #hud-root {

@@ -67,8 +67,12 @@ export class Hud {
     this.arHint.innerHTML = `
       <h3>Modo AR</h3>
       <p>
-        Mueve tu <b>mano derecha</b> para rotar el cubo.<br/>
+        <b>Mano derecha</b>: mueve para rotar el cubo.<br/>
         <b>Mano abierta</b> → vista frontal.
+      </p>
+      <p>
+        <b>Pellizca</b> en una celda de la cuadrícula y arrastra<br/>
+        para girar esa fila o columna.
       </p>
     `;
     document.getElementById('hud-root')!.appendChild(this.arHint);

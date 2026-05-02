@@ -39,8 +39,9 @@ lowercase = standard turn, uppercase = prime.
 | `l` / `L` | L / L' | `b` / `B` | B / B' |
 
 ### AR Mode
-Uses MediaPipe HandLandmarker to track your hand via webcam. Move your
-**right hand** to rotate the cube:
+Uses MediaPipe HandLandmarker to track your hand via webcam.
+
+**Cube rotation (right hand):**
 
 | Hand position | Cube rotation |
 |---|---|
@@ -49,10 +50,20 @@ Uses MediaPipe HandLandmarker to track your hand via webcam. Move your
 | Hand up | Cube tilts up |
 | Hand down | Cube tilts down |
 | Hand at center | Cube faces forward |
+| Open palm | Return to front view |
 
 The rotation is smooth and position-based (not velocity-based), making it
-easy to control. When your hand leaves the frame, the cube smoothly returns
-to the center position.
+easy to control.
+
+**Layer manipulation (pinch gesture):**
+
+A 3×3 grid overlay appears on the camera feed. Pinch (thumb + index finger)
+on any cell and drag:
+- **Horizontal drag** → rotates that row (U, D layers)
+- **Vertical drag** → rotates that column (L, R layers)
+
+The grid provides clear visual feedback, highlighting the selected row or
+column as you drag.
 
 ---
 
