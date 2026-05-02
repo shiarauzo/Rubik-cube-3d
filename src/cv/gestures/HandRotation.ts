@@ -8,11 +8,29 @@ const RIGHT = -Math.PI / 2;    // -90 degrees
 const UP = -Math.PI / 4;       // -45 degrees tilt
 const DOWN = Math.PI / 4;      // 45 degrees tilt
 
+// All possible discrete angles
+const Y_ANGLES = [FRONT, LEFT, RIGHT, Math.PI]; // 0, 90, -90, 180
+const X_ANGLES = [0, UP, DOWN];                  // 0, -45, 45
+
 // Zone thresholds (normalized 0-1 coordinates)
 const LEFT_ZONE = 0.35;
 const RIGHT_ZONE = 0.65;
 const UP_ZONE = 0.35;
 const DOWN_ZONE = 0.65;
+
+/** Snap to nearest discrete angle */
+function snapToNearest(current: number, angles: number[]): number {
+  let nearest = angles[0];
+  let minDist = Math.abs(current - nearest);
+  for (const angle of angles) {
+    const dist = Math.abs(current - angle);
+    if (dist < minDist) {
+      minDist = dist;
+      nearest = angle;
+    }
+  }
+  return nearest;
+}
 
 export class HandRotation {
   private targetY = 0;
@@ -24,15 +42,28 @@ export class HandRotation {
 
   processFrame(landmarks: Map<Handedness, Landmark[]>, hands?: HandShape[]): void {
     const rightHand = landmarks.get('Right');
+    const leftHand = landmarks.get('Left');
 
-    // Check if right hand is open palm → reset to front view
+    // Check if both hands are open palms → reset to front view
     const rightHandShape = hands?.find(h => h.hand === 'Right');
-    const isOpenPalm = rightHandShape?.shape === 'palmIn' || rightHandShape?.shape === 'palmOut';
+    const leftHandShape = hands?.find(h => h.hand === 'Left');
+    const isRightOpen = rightHandShape?.shape === 'palmIn' || rightHandShape?.shape === 'palmOut';
+    const isLeftOpen = leftHandShape?.shape === 'palmIn' || leftHandShape?.shape === 'palmOut';
+    const bothHandsOpen = rightHand && leftHand && isRightOpen && isLeftOpen;
 
-    if (!rightHand || isOpenPalm) {
-      // Return to front when hand is not visible or open palm
-      this.targetX = 0;
-      this.targetY = 0;
+    if (bothHandsOpen) {
+      // Snap to nearest face and stay still
+      const snappedY = snapToNearest(this.currentY, Y_ANGLES);
+      const snappedX = snapToNearest(this.currentX, X_ANGLES);
+      this.targetY = snappedY;
+      this.targetX = snappedX;
+      this.currentY = snappedY;
+      this.currentX = snappedX;
+      this.view.group.rotation.y = snappedY;
+      this.view.group.rotation.x = snappedX;
+      return; // Skip interpolation
+    } else if (!rightHand) {
+      // No right hand visible, keep current position
     } else {
       // Use wrist position (landmark 0) for tracking
       const wrist = rightHand[0];
