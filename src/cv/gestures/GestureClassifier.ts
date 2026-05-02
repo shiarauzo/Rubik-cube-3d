@@ -5,6 +5,7 @@ const FINGER_TIPS = [4, 8, 12, 16, 20];
 const FINGER_PIPS = [3, 6, 10, 14, 18];
 const FINGER_MCPS = [2, 5, 9, 13, 17];
 const WRIST = 0;
+const MIDDLE_MCP = 9;
 
 function dist(a: Landmark, b: Landmark): number {
   const dx = a.x - b.x;
@@ -24,10 +25,26 @@ function isFingerExtended(landmarks: Landmark[], finger: number): boolean {
   return tipDist > pipDist && pipDist > mcpDist * 0.95;
 }
 
+function isPinching(landmarks: Landmark[]): boolean {
+  const thumbTip = landmarks[4];
+  const indexTip = landmarks[8];
+  const wrist = landmarks[WRIST];
+  const middleMcp = landmarks[MIDDLE_MCP];
+  const handSize = dist(wrist, middleMcp);
+  const pinchDist = dist(thumbTip, indexTip) / handSize;
+  return pinchDist < 0.18;
+}
+
 function classify(landmarks: Landmark[], hand: Handedness): HandShape {
+  const wrist = landmarks[WRIST];
+
+  // Check pinch first (thumb and index touching)
+  if (isPinching(landmarks)) {
+    return { hand, shape: 'pinch', wrist };
+  }
+
   const ext = [0, 1, 2, 3, 4].map((f) => isFingerExtended(landmarks, f));
   const [thumbExt, indexExt, middleExt, ringExt, pinkyExt] = ext;
-  const wrist = landmarks[WRIST];
   const indexTip = landmarks[8];
   const indexMcp = landmarks[5];
 

@@ -8,7 +8,7 @@ export type FingerCurl = 'extended' | 'curled';
 
 export interface HandShape {
   hand: Handedness;
-  shape: 'fist' | 'open' | 'pointUp' | 'pointDown' | 'pointLeft' | 'pointRight' | 'thumbUp' | 'thumbDown' | 'palmIn' | 'palmOut' | 'unknown';
+  shape: 'fist' | 'open' | 'pointUp' | 'pointDown' | 'pointLeft' | 'pointRight' | 'thumbUp' | 'thumbDown' | 'palmIn' | 'palmOut' | 'pinch' | 'unknown';
   wrist: Landmark;
 }
 
