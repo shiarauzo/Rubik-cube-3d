@@ -1,8 +1,7 @@
 # Rubik 3D · Computer Vision Edition
 
-A minimalist 3D Rubik's cube that runs in the browser. Solve it with the
-mouse, with hand gestures captured by your webcam, or scan a real cube and
-let the built-in Kociemba solver do the rest.
+A minimalist 3D Rubik's cube that runs in the browser. Control it with the
+mouse or use your webcam to rotate the cube with hand tracking.
 
 > Vite · TypeScript · Three.js · MediaPipe · cubejs
 
@@ -39,41 +38,21 @@ lowercase = standard turn, uppercase = prime.
 | `f` / `F` | F / F' | `d` / `D` | D / D' |
 | `l` / `L` | L / L' | `b` / `B` | B / B' |
 
-### Hand gestures
-Two-handed vocabulary built on top of MediaPipe HandLandmarker (GPU
-delegate). The left hand selects a face, the right hand commits the
-direction.
+### AR Mode
+Uses MediaPipe HandLandmarker to track your hand via webcam. Move your
+**right hand** to rotate the cube:
 
-| Left hand | Face |
+| Hand position | Cube rotation |
 |---|---|
-| Index pointing up | **U** |
-| Index pointing right | **R** |
-| Index pointing down | **D** |
-| Index pointing left | **L** |
-| Open palm towards you | **F** |
-| Open palm away | **B** |
+| Hand to the left | Cube rotates left |
+| Hand to the right | Cube rotates right |
+| Hand up | Cube tilts up |
+| Hand down | Cube tilts down |
+| Hand at center | Cube faces forward |
 
-| Right hand | Direction |
-|---|---|
-| Thumb up · swipe right | CW (R, U, F…) |
-| Thumb down · swipe left | CCW (R', U', F'…) |
-| Closed fist (left hand) | Cancel selection |
-
-A gesture must hold for ~5 frames before it registers, with a 350 ms
-cooldown after each commit to avoid runaway turns.
-
-### Scan a real cube
-Show each of the six faces inside the 3×3 overlay in the order
-**U → R → F → D → L → B**. Press <kbd>Space</kbd> or the capture button.
-For each cell the sampler takes five small patches and uses the median to
-discard glare. The classifier identifies the six centres in HSV space and
-labels every other sticker by adapted distance to those references.
-
-When the scan completes the virtual cube redraws and the **Solve** button
-animates the Kociemba solution.
-
-> Scanning works best with even, frontal lighting. If the colour counts
-> don't add up the app restarts the scan and tells you which face failed.
+The rotation is smooth and position-based (not velocity-based), making it
+easy to control. When your hand leaves the frame, the cube smoothly returns
+to the center position.
 
 ---
 
@@ -82,7 +61,7 @@ animates the Kociemba solution.
 | Layer | Package |
 |---|---|
 | Build | Vite 5, TypeScript 5 (strict) |
-| 3D | `three` + `OrbitControls` + `RoundedBoxGeometry` |
+| 3D | `three` + `TrackballControls` + `RoundedBoxGeometry` |
 | CV | `@mediapipe/tasks-vision` (HandLandmarker, GPU) |
 | Solver | `cubejs` (Kociemba two-phase, in a Web Worker) |
 | Fonts | Inter · JetBrains Mono |
@@ -101,8 +80,8 @@ src/
 ├─ cv/
 │  ├─ Webcam.ts        getUserMedia + permissions
 │  ├─ HandTracker.ts   MediaPipe wrapper
-│  ├─ gestures/        Classifier + state-machine Mapper
-│  └─ scan/            GridOverlay · ColorSampler · ColorClassifier · ScanController
+│  ├─ HandOverlay.ts   Visual hand skeleton overlay
+│  └─ gestures/        GestureClassifier · HandRotation
 ├─ hud/            Hud · Timer · MoveCounter · hud.css
 ├─ util/           color · math · assert
 └─ types.ts
@@ -121,10 +100,6 @@ turn:
 3. When the animation ends, the cubie transforms are baked, positions
    snap to the integer lattice, and `model.applyMove(move)` advances the
    logical state. The model never changes mid-animation.
-
-After a scan, `model.setFromStickers(...)` replaces the logical state
-and `view.repaintFromFacelets(...)` re-skins each cubie at its home
-position, discarding any prior rotations.
 </details>
 
 ---
@@ -165,15 +140,6 @@ The browser needs HTTPS for `getUserMedia`.
   path of its own.
 - HandLandmarker runs at ~30 Hz (every other frame) to keep the render
   loop at 60 fps even on mid-range hardware.
-
----
-
-## Roadmap
-
-- Optional dark theme.
-- WebGPU renderer when stable.
-- One-handed gesture mode for mobile.
-- Local persistence of times and scrambles.
 
 ---
 
