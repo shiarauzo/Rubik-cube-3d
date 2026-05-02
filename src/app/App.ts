@@ -12,6 +12,7 @@ import { Webcam } from '../cv/Webcam';
 import { HandTracker } from '../cv/HandTracker';
 import { GestureClassifier } from '../cv/gestures/GestureClassifier';
 import { HandRotation } from '../cv/gestures/HandRotation';
+import { GridManipulation } from '../cv/gestures/GridManipulation';
 import { HandOverlay } from '../cv/HandOverlay';
 import { bus } from './events';
 import type { Mode, Move } from '../types';
@@ -32,6 +33,7 @@ export class App {
   private handTracker: HandTracker;
   private gestureClassifier: GestureClassifier;
   private handRotation: HandRotation;
+  private gridManipulation: GridManipulation;
   private handOverlay: HandOverlay;
   private contactShadow: THREE.Mesh | null = null;
 
@@ -72,6 +74,7 @@ export class App {
     this.handTracker = new HandTracker();
     this.gestureClassifier = new GestureClassifier();
     this.handRotation = new HandRotation(this.view);
+    this.gridManipulation = new GridManipulation(this.view, this.engine);
     this.handOverlay = new HandOverlay(overlay);
 
     // Find contact shadow in scene for AR mode visibility toggle
@@ -135,6 +138,9 @@ export class App {
 
           // Rotate cube with right hand (open palm resets to front)
           this.handRotation.processFrame(landmarksMap, frame.hands);
+
+          // Process grid-based layer manipulation with left hand
+          this.gridManipulation.processFrame(frame.hands, landmarksMap);
         }
       }
     } else if (this.mode !== 'ar') {
@@ -216,10 +222,14 @@ export class App {
       if (this.contactShadow) this.contactShadow.visible = false;
       // Disable orbit controls
       this.orbit.enabled = false;
+      // Activate grid overlay for layer selection
+      this.gridManipulation.setActive(true);
     } else if (prevMode === 'ar') {
       // Restore from AR mode
       if (this.contactShadow) this.contactShadow.visible = true;
       this.orbit.enabled = true;
+      // Deactivate grid overlay
+      this.gridManipulation.setActive(false);
     }
 
     if (mode === 'mouse') {

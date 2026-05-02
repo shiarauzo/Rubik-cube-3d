@@ -61,6 +61,8 @@ function makeStickerMesh(color: StickerColor, face: Face): THREE.Mesh {
     roughness: 0.4,
     metalness: 0.05,
     side: THREE.DoubleSide,
+    emissive: 0x000000,
+    emissiveIntensity: 0,
   });
   const mesh = new THREE.Mesh(STICKER_GEOMETRY, mat);
   const [nx, ny, nz] = FACE_NORMAL[face];
@@ -75,6 +77,10 @@ function makeStickerMesh(color: StickerColor, face: Face): THREE.Mesh {
 export class CubeView {
   readonly group: THREE.Group;
   private cubies: Cubie[] = [];
+
+  // Highlight color - soft cream that works with all cube colors
+  private static HIGHLIGHT_EMISSIVE = 0xfffaf0;
+  private static HIGHLIGHT_INTENSITY = 0.35;
 
   constructor() {
     this.group = new THREE.Group();
@@ -163,6 +169,31 @@ export class CubeView {
       c.mesh.position.x = Math.round(c.mesh.position.x);
       c.mesh.position.y = Math.round(c.mesh.position.y);
       c.mesh.position.z = Math.round(c.mesh.position.z);
+    }
+  }
+
+  /** Highlight stickers in a layer with a soft glow effect. Pass null to clear. */
+  highlightLayer(face: Face | null): void {
+    // Reset all stickers first
+    for (const cubie of this.cubies) {
+      for (const [, sticker] of cubie.stickers) {
+        const mat = sticker.material as THREE.MeshStandardMaterial;
+        mat.emissive.setHex(0x000000);
+        mat.emissiveIntensity = 0;
+      }
+    }
+
+    if (!face) return;
+
+    // Get cubies in the selected layer
+    const layerCubies = this.getLayerCubies(face);
+
+    for (const cubie of layerCubies) {
+      for (const [, sticker] of cubie.stickers) {
+        const mat = sticker.material as THREE.MeshStandardMaterial;
+        mat.emissive.setHex(CubeView.HIGHLIGHT_EMISSIVE);
+        mat.emissiveIntensity = CubeView.HIGHLIGHT_INTENSITY;
+      }
     }
   }
 }
