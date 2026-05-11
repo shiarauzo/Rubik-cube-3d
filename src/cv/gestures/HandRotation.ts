@@ -37,18 +37,29 @@ export class HandRotation {
   private targetX = 0;
   private currentY = 0;
   private currentX = 0;
+  private enabled = true;
 
   constructor(private view: CubeView) {}
 
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
+  }
+
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+
   processFrame(landmarks: Map<Handedness, Landmark[]>, hands?: HandShape[]): void {
+    if (!this.enabled) return;
+
     const rightHand = landmarks.get('Right');
     const leftHand = landmarks.get('Left');
 
-    // Check if left hand is open palm → snap to nearest face
+    // Check if left hand is palmIn → snap to nearest face
     const leftHandShape = hands?.find(h => h.hand === 'Left');
-    const isLeftOpen = leftHand && (leftHandShape?.shape === 'palmIn' || leftHandShape?.shape === 'palmOut');
+    const shouldSnap = leftHand && leftHandShape?.shape === 'palmIn';
 
-    if (isLeftOpen) {
+    if (shouldSnap) {
       // Snap to nearest face and stay still
       const snappedY = snapToNearest(this.currentY, Y_ANGLES);
       const snappedX = snapToNearest(this.currentX, X_ANGLES);

@@ -65,14 +65,22 @@ export class Hud {
     this.arHint = document.createElement('div');
     this.arHint.id = 'gesture-hint';
     this.arHint.innerHTML = `
-      <h3>Modo AR</h3>
+      <h3>Modo AR - Gestos</h3>
       <p>
-        <b>Mano derecha</b>: mueve para rotar el cubo.<br/>
-        <b>Mano abierta</b> → vista frontal.
+        <b>Mano izquierda abierta</b> <code>palmOut</code><br/>
+        Activa rotación. Mueve la derecha para rotar.
       </p>
       <p>
-        <b>Pellizca</b> en una celda de la cuadrícula y arrastra<br/>
-        para girar esa fila o columna.
+        <b>Mano izquierda hacia ti</b> <code>palmIn</code><br/>
+        Snap a la cara más cercana.
+      </p>
+      <p>
+        <b>Pellizca con izquierda</b> <code>pinch</code><br/>
+        Activa cuadrícula. Arrastra con la derecha.
+      </p>
+      <p>
+        <b>Ambos puños</b> <code>fist + fist</code> 1.5s<br/>
+        Resolver el cubo automáticamente.
       </p>
     `;
     document.getElementById('hud-root')!.appendChild(this.arHint);
