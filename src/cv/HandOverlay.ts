@@ -1,4 +1,5 @@
 import type { Landmark } from './gestures/types';
+import type { ModeColor } from './gestures/TwoHandController';
 
 // MediaPipe hand connections for drawing skeleton
 const HAND_CONNECTIONS: [number, number][] = [
@@ -10,6 +11,13 @@ const HAND_CONNECTIONS: [number, number][] = [
   [5, 9], [9, 13], [13, 17],            // palm
 ];
 
+const MODE_COLORS: Record<ModeColor, string> = {
+  white: '#ffffff',
+  blue: '#3b82f6',
+  green: '#22c55e',
+  purple: '#a855f7',
+};
+
 export class HandOverlay {
   private ctx: CanvasRenderingContext2D;
 
@@ -17,7 +25,12 @@ export class HandOverlay {
     this.ctx = canvas.getContext('2d')!;
   }
 
-  draw(handsLandmarks: Landmark[][], isPinching: boolean[] = []): void {
+  draw(
+    handsLandmarks: Landmark[][],
+    isPinching: boolean[] = [],
+    modeColor: ModeColor = 'white',
+    solverProgress = 0,
+  ): void {
     const video = this.canvas.parentElement?.querySelector('video');
     if (video) {
       this.canvas.width = video.videoWidth || this.canvas.clientWidth;
@@ -26,19 +39,56 @@ export class HandOverlay {
 
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+    // Draw solver progress ring in center if charging
+    if (solverProgress > 0) {
+      this.drawSolverProgressRing(solverProgress);
+    }
+
     for (let h = 0; h < handsLandmarks.length; h++) {
       const landmarks = handsLandmarks[h];
       const pinching = isPinching[h] ?? false;
-      this.drawHand(landmarks, pinching);
+      this.drawHand(landmarks, pinching, modeColor);
     }
   }
 
-  private drawHand(landmarks: Landmark[], pinching: boolean): void {
+  private drawSolverProgressRing(progress: number): void {
+    const cx = this.canvas.width / 2;
+    const cy = this.canvas.height / 2;
+    const radius = Math.min(this.canvas.width, this.canvas.height) * 0.15;
+    const lineWidth = 6;
+
+    // Background ring
+    this.ctx.beginPath();
+    this.ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    this.ctx.strokeStyle = 'rgba(168, 85, 247, 0.3)';
+    this.ctx.lineWidth = lineWidth;
+    this.ctx.stroke();
+
+    // Progress arc
+    const startAngle = -Math.PI / 2;
+    const endAngle = startAngle + progress * Math.PI * 2;
+    this.ctx.beginPath();
+    this.ctx.arc(cx, cy, radius, startAngle, endAngle);
+    this.ctx.strokeStyle = '#a855f7';
+    this.ctx.lineWidth = lineWidth;
+    this.ctx.lineCap = 'round';
+    this.ctx.stroke();
+
+    // Center icon (fist emoji representation - two circles)
+    this.ctx.fillStyle = 'rgba(168, 85, 247, 0.8)';
+    this.ctx.font = `${radius * 0.6}px sans-serif`;
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText('✊', cx, cy);
+  }
+
+  private drawHand(landmarks: Landmark[], pinching: boolean, modeColor: ModeColor): void {
     const w = this.canvas.width;
     const h = this.canvas.height;
+    const color = MODE_COLORS[modeColor];
 
-    // Draw connections
-    this.ctx.strokeStyle = pinching ? '#22c55e' : '#3b82f6';
+    // Draw connections with mode color
+    this.ctx.strokeStyle = pinching ? '#22c55e' : color;
     this.ctx.lineWidth = 3;
     this.ctx.lineCap = 'round';
 
@@ -74,7 +124,7 @@ export class HandOverlay {
       } else if (isFingerTip) {
         this.ctx.fillStyle = '#ef4444';
       } else {
-        this.ctx.fillStyle = '#fff';
+        this.ctx.fillStyle = color;
       }
       this.ctx.fill();
 
