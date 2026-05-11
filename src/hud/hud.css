@@ -101,6 +101,68 @@ html, body {
   pointer-events: none;
 }
 
+/* Mode indicator */
+.mode-indicator {
+  --mode-color: #ffffff;
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  border: 1px solid var(--mode-color);
+  z-index: 10;
+}
+
+.mode-indicator.active {
+  display: flex;
+}
+
+.mode-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--mode-color);
+  text-transform: uppercase;
+}
+
+/* Solver progress ring (inside mode indicator) */
+.solver-progress-container {
+  display: none;
+  width: 24px;
+  height: 24px;
+}
+
+.solver-progress-container.active {
+  display: block;
+}
+
+.solver-progress-ring {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.solver-progress-ring .progress-bg {
+  fill: none;
+  stroke: rgba(168, 85, 247, 0.3);
+  stroke-width: 3;
+}
+
+.solver-progress-ring .progress-bar {
+  fill: none;
+  stroke: #a855f7;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  transition: stroke-dashoffset 0.1s linear;
+}
+
 /* Grid overlay for layer selection */
 #grid-overlay {
   position: absolute;
