@@ -15,6 +15,7 @@ export interface HandShape {
 export interface GestureFrame {
   hands: HandShape[];
   ts: number;
+  bothFists: boolean;
 }
 
 export interface PendingMove {

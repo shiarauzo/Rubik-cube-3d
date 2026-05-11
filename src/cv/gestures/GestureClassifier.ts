@@ -111,6 +111,12 @@ export class GestureClassifier {
         hands.push(classify(lm, h));
       }
     }
-    return { hands, ts };
+
+    // Check if both hands are making fists
+    const leftHand = hands.find((h) => h.hand === 'Left');
+    const rightHand = hands.find((h) => h.hand === 'Right');
+    const bothFists = leftHand?.shape === 'fist' && rightHand?.shape === 'fist';
+
+    return { hands, ts, bothFists };
   }
 }
