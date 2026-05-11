@@ -13,7 +13,9 @@ import { HandTracker } from '../cv/HandTracker';
 import { GestureClassifier } from '../cv/gestures/GestureClassifier';
 import { HandRotation } from '../cv/gestures/HandRotation';
 import { GridManipulation } from '../cv/gestures/GridManipulation';
+import { TwoHandController } from '../cv/gestures/TwoHandController';
 import { HandOverlay } from '../cv/HandOverlay';
+import { ModeIndicator } from '../cv/ModeIndicator';
 import { bus } from './events';
 import type { Mode, Move } from '../types';
 import { expandHalfTurns } from '../cube/Notation';
@@ -34,7 +36,9 @@ export class App {
   private gestureClassifier: GestureClassifier;
   private handRotation: HandRotation;
   private gridManipulation: GridManipulation;
+  private twoHandController: TwoHandController;
   private handOverlay: HandOverlay;
+  private modeIndicator: ModeIndicator;
   private contactShadow: THREE.Mesh | null = null;
 
   private mode: Mode = 'mouse';
@@ -75,7 +79,15 @@ export class App {
     this.gestureClassifier = new GestureClassifier();
     this.handRotation = new HandRotation(this.view);
     this.gridManipulation = new GridManipulation(this.view, this.engine);
+    this.twoHandController = new TwoHandController(
+      this.handRotation,
+      this.gridManipulation,
+      this.solver,
+      this.engine,
+      this.model,
+    );
     this.handOverlay = new HandOverlay(overlay);
+    this.modeIndicator = new ModeIndicator(document.getElementById('cv-layer')!);
 
     // Find contact shadow in scene for AR mode visibility toggle
     this.scene.traverse((obj) => {
@@ -133,18 +145,28 @@ export class App {
             }
           }
 
-          // Draw hand overlay
-          this.handOverlay.draw(allLandmarks, isPinching);
+          // Process through TwoHandController (coordinates rotation + manipulation + solver)
+          this.twoHandController.processFrame(frame, landmarksMap);
 
-          // Rotate cube with right hand (open palm resets to front)
-          this.handRotation.processFrame(landmarksMap, frame.hands);
+          // Get mode state for visual feedback
+          const modeColor = this.twoHandController.getModeColor();
+          const solverProgress = this.twoHandController.getSolverProgress();
 
-          // Process grid-based layer manipulation with left hand
-          this.gridManipulation.processFrame(frame.hands, landmarksMap);
+          // Draw hand overlay with mode colors
+          this.handOverlay.draw(allLandmarks, isPinching, modeColor, solverProgress);
+
+          // Update mode indicator
+          this.modeIndicator.update(
+            this.twoHandController.getState(),
+            modeColor,
+            this.twoHandController.getModeLabel(),
+            solverProgress,
+          );
         }
       }
     } else if (this.mode !== 'ar') {
       this.handOverlay.clear();
+      this.modeIndicator.hide();
     }
 
     this.renderer.render(this.scene, this.camera);
