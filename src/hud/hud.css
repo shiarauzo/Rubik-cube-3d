@@ -130,6 +130,54 @@ html, body {
   text-transform: uppercase;
 }
 
+/* Large Mode Indicator (screen center) */
+.mode-indicator-large {
+  --mode-color: #ffffff;
+  position: fixed;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 28px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  border: 2px solid var(--mode-color);
+  z-index: 25;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.mode-indicator-large.active {
+  display: flex;
+  opacity: 1;
+}
+
+.mode-indicator-large.fade-out {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-10px);
+}
+
+.mode-label-large {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--mode-color);
+  text-transform: uppercase;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.mode-hint-large {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 /* Solver progress ring (inside mode indicator) */
 .solver-progress-container {
   display: none;
@@ -446,4 +494,245 @@ html, body {
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
+}
+
+/* AR Tutorial Overlay ---------------------------------------------------- */
+
+.ar-tutorial {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: none;
+  place-items: center;
+}
+
+.ar-tutorial.active {
+  display: grid;
+}
+
+.tutorial-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.25s ease-out;
+}
+
+.tutorial-card {
+  position: relative;
+  width: 90%;
+  max-width: 380px;
+  background: var(--glass-strong);
+  backdrop-filter: blur(24px) saturate(1.5);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tutorial-header {
+  padding: 20px 24px 12px;
+  text-align: center;
+}
+
+.tutorial-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: white;
+  margin-bottom: 8px;
+}
+
+.tutorial-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+.tutorial-steps {
+  position: relative;
+  min-height: 160px;
+  padding: 8px 24px;
+}
+
+.tutorial-step {
+  position: absolute;
+  inset: 8px 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  opacity: 0;
+  transform: translateX(20px);
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+.tutorial-step.active {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.step-icon {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 14px;
+  font-size: 28px;
+}
+
+.tutorial-step[data-step="0"] .step-icon {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.tutorial-step[data-step="1"] .step-icon {
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.tutorial-step[data-step="2"] .step-icon {
+  background: rgba(168, 85, 247, 0.12);
+}
+
+.step-content {
+  flex: 1;
+}
+
+.step-title {
+  margin: 0 0 6px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+}
+
+.tutorial-step[data-step="0"] .step-title { color: #3b82f6; }
+.tutorial-step[data-step="1"] .step-title { color: #22c55e; }
+.tutorial-step[data-step="2"] .step-title { color: #a855f7; }
+
+.step-description {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.step-gesture {
+  display: inline-block;
+  padding: 3px 8px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-faint);
+  letter-spacing: 0.02em;
+}
+
+.tutorial-footer {
+  padding: 16px 24px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+}
+
+.tutorial-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.tutorial-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.15);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.tutorial-dot:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.tutorial-dot.active {
+  background: var(--accent);
+  transform: scale(1.2);
+}
+
+.tutorial-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tutorial-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.tutorial-btn:active {
+  transform: scale(0.97);
+}
+
+.tutorial-btn.secondary {
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.tutorial-btn.secondary:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ink);
+}
+
+.tutorial-btn.primary {
+  background: var(--accent);
+  color: white;
+}
+
+.tutorial-btn.primary:hover {
+  background: var(--accent-hover);
+}
+
+.tutorial-btn .done-text {
+  display: none;
+}
+
+.ar-tutorial.last-step .tutorial-btn .next-text {
+  display: none;
+}
+
+.ar-tutorial.last-step .tutorial-btn .done-text {
+  display: inline;
 }

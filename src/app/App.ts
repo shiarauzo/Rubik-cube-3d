@@ -16,6 +16,8 @@ import { GridManipulation } from '../cv/gestures/GridManipulation';
 import { TwoHandController } from '../cv/gestures/TwoHandController';
 import { HandOverlay } from '../cv/HandOverlay';
 import { ModeIndicator } from '../cv/ModeIndicator';
+import { LargeModeIndicator } from '../cv/LargeModeIndicator';
+import { ARTutorial } from '../cv/ARTutorial';
 import { bus } from './events';
 import type { Mode, Move } from '../types';
 import { expandHalfTurns } from '../cube/Notation';
@@ -39,6 +41,8 @@ export class App {
   private twoHandController: TwoHandController;
   private handOverlay: HandOverlay;
   private modeIndicator: ModeIndicator;
+  private largeModeIndicator: LargeModeIndicator;
+  private arTutorial: ARTutorial;
   private contactShadow: THREE.Mesh | null = null;
 
   private mode: Mode = 'mouse';
@@ -88,6 +92,8 @@ export class App {
     );
     this.handOverlay = new HandOverlay(overlay);
     this.modeIndicator = new ModeIndicator(document.getElementById('cv-layer')!);
+    this.largeModeIndicator = new LargeModeIndicator(document.getElementById('hud-root')!);
+    this.arTutorial = new ARTutorial(document.getElementById('hud-root')!);
 
     // Find contact shadow in scene for AR mode visibility toggle
     this.scene.traverse((obj) => {
@@ -155,18 +161,26 @@ export class App {
           // Draw hand overlay with mode colors
           this.handOverlay.draw(allLandmarks, isPinching, modeColor, solverProgress);
 
-          // Update mode indicator
+          // Update mode indicator (small, in cv-layer)
           this.modeIndicator.update(
             this.twoHandController.getState(),
             modeColor,
             this.twoHandController.getModeLabel(),
             solverProgress,
           );
+
+          // Update large mode indicator (center screen)
+          this.largeModeIndicator.update(
+            this.twoHandController.getState(),
+            modeColor,
+            this.twoHandController.getModeLabel(),
+          );
         }
       }
     } else if (this.mode !== 'ar') {
       this.handOverlay.clear();
       this.modeIndicator.hide();
+      this.largeModeIndicator.hide();
     }
 
     this.renderer.render(this.scene, this.camera);
@@ -271,6 +285,9 @@ export class App {
         console.log('[AR] Initializing hand tracker...');
         await this.handTracker.init();
         console.log('[AR] Hand tracker ready:', this.handTracker.isReady());
+
+        // Show AR tutorial on first entry
+        this.arTutorial.show();
       } catch (e) {
         console.error('[AR] Hand tracker init failed:', e);
       }
