@@ -18,14 +18,37 @@ const ANIM_MS = 240;
 
 interface QueuedMove {
   move: Move;
+  silent: boolean;
   resolve: () => void;
+}
+
+/**
+ * Snap a quaternion to the nearest 90° axis-aligned rotation.
+ * This eliminates floating-point drift after multiple turn animations.
+ */
+function snapQuaternion(q: THREE.Quaternion): void {
+  const m = new THREE.Matrix4().makeRotationFromQuaternion(q);
+  const e = m.elements;
+  // For each row, pick the axis with the largest |component| and snap to ±1
+  const snapRow = (i: number) => {
+    const ax = Math.abs(e[i]);
+    const ay = Math.abs(e[i + 4]);
+    const az = Math.abs(e[i + 8]);
+    const max = Math.max(ax, ay, az);
+    e[i] = ax === max ? Math.sign(e[i]) : 0;
+    e[i + 4] = ay === max ? Math.sign(e[i + 4]) : 0;
+    e[i + 8] = az === max ? Math.sign(e[i + 8]) : 0;
+  };
+  snapRow(0);
+  snapRow(1);
+  snapRow(2);
+  q.setFromRotationMatrix(m);
 }
 
 export class MoveEngine {
   private queue: QueuedMove[] = [];
   private running = false;
   private moveCount = 0;
-  private silentNextApply = false;
 
   constructor(
     private readonly view: CubeView,
@@ -37,20 +60,15 @@ export class MoveEngine {
     this.moveCount = 0;
   }
 
-  /** When the next applyMove is processed, do not emit move:applied. */
-  setSilent(): void {
-    this.silentNextApply = true;
-  }
-
-  queueMove(move: Move): Promise<void> {
+  queueMove(move: Move, opts: { silent?: boolean } = {}): Promise<void> {
     return new Promise((resolve) => {
-      this.queue.push({ move, resolve });
+      this.queue.push({ move, silent: opts.silent ?? false, resolve });
       if (!this.running) this.runNext();
     });
   }
 
-  async queueSequence(moves: Move[]): Promise<void> {
-    for (const m of moves) await this.queueMove(m);
+  async queueSequence(moves: Move[], opts: { silent?: boolean } = {}): Promise<void> {
+    for (const m of moves) await this.queueMove(m, opts);
   }
 
   isBusy(): boolean {
@@ -68,12 +86,12 @@ export class MoveEngine {
       return;
     }
     this.running = true;
-    await this.animate(item.move);
+    await this.animate(item.move, item.silent);
     item.resolve();
     this.runNext();
   }
 
-  private async animate(move: Move): Promise<void> {
+  private async animate(move: Move, silent: boolean): Promise<void> {
     const face = move[0] as Face;
     const suffix = move.slice(1);
     let angle = -Math.PI / 2;
@@ -115,9 +133,7 @@ export class MoveEngine {
     // Update logical model
     this.model.applyMove(move);
 
-    if (this.silentNextApply) {
-      this.silentNextApply = false;
-    } else {
+    if (!silent) {
       this.moveCount += 1;
       bus.emit('move:applied', { move, total: this.moveCount });
       if (this.model.isSolved()) bus.emit('cube:solved', undefined);
@@ -131,5 +147,7 @@ export class MoveEngine {
     cubie.mesh.position.x = Math.round(cubie.mesh.position.x);
     cubie.mesh.position.y = Math.round(cubie.mesh.position.y);
     cubie.mesh.position.z = Math.round(cubie.mesh.position.z);
+    // Snap quaternion to nearest 90° axis-aligned rotation to prevent drift
+    snapQuaternion(cubie.mesh.quaternion);
   }
 }

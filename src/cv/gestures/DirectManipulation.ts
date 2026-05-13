@@ -340,8 +340,7 @@ export class DirectManipulation {
     // Commit the move if applicable
     if (move && !this.engine.isBusy()) {
       // We already rotated visually, just update the model
-      this.engine.setSilent();
-      this.engine.queueMove(move);
+      this.engine.queueMove(move, { silent: true });
     }
 
     this.grabState = null;
