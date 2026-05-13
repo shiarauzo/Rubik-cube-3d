@@ -1,28 +1,28 @@
 export interface TutorialStep {
-  title: string;
-  description: string;
   icon: string;
-  gesture: string;
+  action: string;
+  hint: string;
+  gesture: 'open' | 'pinch' | 'fist';
 }
 
 const TUTORIAL_STEPS: TutorialStep[] = [
   {
-    title: 'ROTAR',
-    description: 'Mueve tu mano izquierda por la pantalla para rotar el cubo y verlo desde diferentes angulos.',
     icon: '✋',
-    gesture: 'Mano abierta',
+    action: 'Abre la mano y muevela',
+    hint: '↑ ↓ para rotar',
+    gesture: 'open'
   },
   {
-    title: 'MOVER CAPAS',
-    description: 'Haz pinch (junta pulgar e indice) y arrastra para girar una capa del cubo.',
     icon: '🤏',
-    gesture: 'Pinch + arrastrar',
+    action: 'Pinch y arrastra',
+    hint: 'para mover capas',
+    gesture: 'pinch'
   },
   {
-    title: 'RESOLVER',
-    description: 'Cierra ambos punos y mantenlos 1.5 segundos para activar el solucionador automatico.',
-    icon: '✊',
-    gesture: 'Dos punos',
+    icon: '✊✊',
+    action: 'Dos punos 1.5s',
+    hint: 'para resolver',
+    gesture: 'fist'
   },
 ];
 
@@ -32,115 +32,65 @@ export class ARTutorial {
   private visible = false;
   private onComplete: (() => void) | null = null;
   private hasShownBefore = false;
+  private gestureDetected = false;
+  private gestureHoldTime = 0;
+  private readonly GESTURE_HOLD_MS = 800;
 
   constructor(parent: HTMLElement) {
     this.container = document.createElement('div');
-    this.container.className = 'ar-tutorial';
-    this.container.innerHTML = this.buildHTML();
+    this.container.className = 'ar-hint';
     parent.appendChild(this.container);
 
-    this.bindEvents();
-
-    // Check if user has seen tutorial before
     this.hasShownBefore = localStorage.getItem('ar-tutorial-seen') === 'true';
   }
 
-  private buildHTML(): string {
-    const stepsHTML = TUTORIAL_STEPS.map((step, i) => `
-      <div class="tutorial-step ${i === 0 ? 'active' : ''}" data-step="${i}">
-        <div class="step-icon">${step.icon}</div>
-        <div class="step-content">
-          <h4 class="step-title">${step.title}</h4>
-          <p class="step-description">${step.description}</p>
-          <span class="step-gesture">${step.gesture}</span>
-        </div>
-      </div>
-    `).join('');
+  private render(): void {
+    const step = TUTORIAL_STEPS[this.currentStep];
+    const animClass = step.gesture === 'open' ? 'anim-wave' : step.gesture === 'pinch' ? 'anim-pinch' : 'anim-fist';
 
-    const dotsHTML = TUTORIAL_STEPS.map((_, i) => `
-      <button class="tutorial-dot ${i === 0 ? 'active' : ''}" data-step="${i}" aria-label="Paso ${i + 1}"></button>
-    `).join('');
-
-    return `
-      <div class="tutorial-backdrop"></div>
-      <div class="tutorial-card">
-        <div class="tutorial-header">
-          <span class="tutorial-badge">MODO AR</span>
-          <h3>Controles por Gestos</h3>
-        </div>
-        <div class="tutorial-steps">
-          ${stepsHTML}
-        </div>
-        <div class="tutorial-footer">
-          <div class="tutorial-dots">
-            ${dotsHTML}
-          </div>
-          <div class="tutorial-actions">
-            <button class="tutorial-btn secondary tutorial-skip">Saltar</button>
-            <button class="tutorial-btn primary tutorial-next">
-              <span class="next-text">Siguiente</span>
-              <span class="done-text">Empezar</span>
-            </button>
-          </div>
-        </div>
+    this.container.innerHTML = `
+      <div class="ar-hint-content">
+        <span class="ar-hint-icon ${animClass}">${step.icon}</span>
+        <span class="ar-hint-text">${step.action}<span class="hint-action">${step.hint}</span></span>
+        <span class="ar-hint-step">${this.currentStep + 1}/${TUTORIAL_STEPS.length}</span>
       </div>
     `;
   }
 
-  private bindEvents(): void {
-    const nextBtn = this.container.querySelector('.tutorial-next')!;
-    const skipBtn = this.container.querySelector('.tutorial-skip')!;
-    const dots = this.container.querySelectorAll('.tutorial-dot');
-    const backdrop = this.container.querySelector('.tutorial-backdrop')!;
+  /** Call this every frame with detected gesture */
+  update(detectedGesture: 'open' | 'pinch' | 'fist' | 'none'): void {
+    if (!this.visible) return;
 
-    nextBtn.addEventListener('click', () => this.nextStep());
-    skipBtn.addEventListener('click', () => this.complete());
-    backdrop.addEventListener('click', () => this.complete());
+    const step = TUTORIAL_STEPS[this.currentStep];
 
-    dots.forEach((dot, i) => {
-      dot.addEventListener('click', () => this.goToStep(i));
-    });
+    if (detectedGesture === step.gesture) {
+      if (!this.gestureDetected) {
+        this.gestureDetected = true;
+        this.gestureHoldTime = performance.now();
+        this.container.classList.add('detecting');
+      } else if (performance.now() - this.gestureHoldTime > this.GESTURE_HOLD_MS) {
+        this.container.classList.remove('detecting');
+        this.container.classList.add('success');
 
-    // Keyboard navigation
-    document.addEventListener('keydown', (e) => {
-      if (!this.visible) return;
-      if (e.key === 'Escape') this.complete();
-      if (e.key === 'ArrowRight' || e.key === 'Enter') this.nextStep();
-      if (e.key === 'ArrowLeft') this.prevStep();
-    });
-  }
+        setTimeout(() => {
+          this.container.classList.remove('success');
+          this.nextStep();
+        }, 400);
 
-  private goToStep(index: number): void {
-    if (index < 0 || index >= TUTORIAL_STEPS.length) return;
-
-    this.currentStep = index;
-    const steps = this.container.querySelectorAll('.tutorial-step');
-    const dots = this.container.querySelectorAll('.tutorial-dot');
-
-    steps.forEach((step, i) => {
-      step.classList.toggle('active', i === index);
-    });
-
-    dots.forEach((dot, i) => {
-      dot.classList.toggle('active', i === index);
-    });
-
-    // Update button text on last step
-    const isLast = index === TUTORIAL_STEPS.length - 1;
-    this.container.classList.toggle('last-step', isLast);
+        this.gestureDetected = false;
+      }
+    } else {
+      this.gestureDetected = false;
+      this.container.classList.remove('detecting');
+    }
   }
 
   private nextStep(): void {
     if (this.currentStep < TUTORIAL_STEPS.length - 1) {
-      this.goToStep(this.currentStep + 1);
+      this.currentStep++;
+      this.render();
     } else {
       this.complete();
-    }
-  }
-
-  private prevStep(): void {
-    if (this.currentStep > 0) {
-      this.goToStep(this.currentStep - 1);
     }
   }
 
@@ -152,32 +102,36 @@ export class ARTutorial {
 
     this.onComplete = onComplete ?? null;
     this.currentStep = 0;
-    this.goToStep(0);
+    this.gestureDetected = false;
     this.visible = true;
+    this.render();
     this.container.classList.add('active');
   }
 
   private complete(): void {
     this.visible = false;
-    this.container.classList.remove('active');
+    this.container.classList.remove('active', 'detecting', 'success');
     localStorage.setItem('ar-tutorial-seen', 'true');
     this.hasShownBefore = true;
     this.onComplete?.();
   }
 
-  /** Force show even if seen before (for help button) */
   forceShow(onComplete?: () => void): void {
     this.hasShownBefore = false;
     this.show(onComplete);
-    this.hasShownBefore = true; // Reset after showing
+    this.hasShownBefore = true;
   }
 
   hide(): void {
     this.visible = false;
-    this.container.classList.remove('active');
+    this.container.classList.remove('active', 'detecting', 'success');
   }
 
   isVisible(): boolean {
     return this.visible;
+  }
+
+  skip(): void {
+    this.complete();
   }
 }

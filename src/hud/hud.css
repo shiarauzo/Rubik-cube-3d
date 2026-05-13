@@ -496,243 +496,98 @@ html, body {
   * { transition: none !important; animation: none !important; }
 }
 
-/* AR Tutorial Overlay ---------------------------------------------------- */
+/* AR Hint (lightweight tutorial) ----------------------------------------- */
 
-.ar-tutorial {
+.ar-hint {
   position: fixed;
-  inset: 0;
-  z-index: 100;
+  top: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
   display: none;
-  place-items: center;
-}
-
-.ar-tutorial.active {
-  display: grid;
-}
-
-.tutorial-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  animation: fadeIn 0.25s ease-out;
-}
-
-.tutorial-card {
-  position: relative;
-  width: 90%;
-  max-width: 380px;
-  background: var(--glass-strong);
-  backdrop-filter: blur(24px) saturate(1.5);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  backdrop-filter: blur(22px) saturate(1.5);
   border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
-  overflow: hidden;
-  animation: slideUp 0.3s ease-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.tutorial-header {
-  padding: 20px 24px 12px;
-  text-align: center;
-}
-
-.tutorial-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-  border-radius: 20px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: white;
-  margin-bottom: 8px;
-}
-
-.tutorial-header h3 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--ink);
-  letter-spacing: -0.02em;
-}
-
-.tutorial-steps {
-  position: relative;
-  min-height: 160px;
-  padding: 8px 24px;
-}
-
-.tutorial-step {
-  position: absolute;
-  inset: 8px 24px;
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  opacity: 0;
-  transform: translateX(20px);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
   pointer-events: none;
-  transition: opacity 0.25s, transform 0.25s;
+  opacity: 0;
+  transition: opacity 0.25s, border-color 0.2s;
 }
 
-.tutorial-step.active {
+.ar-hint.active {
+  display: flex;
   opacity: 1;
-  transform: translateX(0);
-  pointer-events: auto;
 }
 
-.step-icon {
-  flex-shrink: 0;
-  width: 56px;
-  height: 56px;
-  display: grid;
-  place-items: center;
-  background: rgba(59, 130, 246, 0.1);
-  border-radius: 14px;
-  font-size: 28px;
+.ar-hint.detecting {
+  border-color: var(--ink-soft);
 }
 
-.tutorial-step[data-step="0"] .step-icon {
-  background: rgba(59, 130, 246, 0.12);
+.ar-hint.success {
+  border-color: var(--ink);
 }
 
-.tutorial-step[data-step="1"] .step-icon {
-  background: rgba(34, 197, 94, 0.12);
-}
-
-.tutorial-step[data-step="2"] .step-icon {
-  background: rgba(168, 85, 247, 0.12);
-}
-
-.step-content {
-  flex: 1;
-}
-
-.step-title {
-  margin: 0 0 6px 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--ink);
-  letter-spacing: 0.02em;
-}
-
-.tutorial-step[data-step="0"] .step-title { color: #3b82f6; }
-.tutorial-step[data-step="1"] .step-title { color: #22c55e; }
-.tutorial-step[data-step="2"] .step-title { color: #a855f7; }
-
-.step-description {
-  margin: 0 0 8px 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ink-soft);
-}
-
-.step-gesture {
-  display: inline-block;
-  padding: 3px 8px;
-  background: rgba(0, 0, 0, 0.06);
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--ink-faint);
-  letter-spacing: 0.02em;
-}
-
-.tutorial-footer {
-  padding: 16px 24px 20px;
+.ar-hint-content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  border-top: 1px solid var(--line);
+  gap: 10px;
 }
 
-.tutorial-dots {
-  display: flex;
-  gap: 8px;
+.ar-hint-icon {
+  font-size: 20px;
+  line-height: 1;
 }
 
-.tutorial-dot {
-  width: 8px;
-  height: 8px;
-  padding: 0;
-  background: rgba(0, 0, 0, 0.15);
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
+/* Subtle hand animations */
+.ar-hint-icon.anim-wave {
+  animation: waveHand 1.5s ease-in-out infinite;
 }
 
-.tutorial-dot:hover {
-  background: rgba(0, 0, 0, 0.25);
+.ar-hint-icon.anim-pinch {
+  animation: pinchHand 1.2s ease-in-out infinite;
 }
 
-.tutorial-dot.active {
-  background: var(--accent);
-  transform: scale(1.2);
+.ar-hint-icon.anim-fist {
+  animation: pulseHand 1.2s ease-in-out infinite;
 }
 
-.tutorial-actions {
-  display: flex;
-  gap: 8px;
+@keyframes waveHand {
+  0%, 100% { transform: translateY(-2px); }
+  50% { transform: translateY(2px); }
 }
 
-.tutorial-btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 10px;
-  font-family: inherit;
+@keyframes pinchHand {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.92); }
+}
+
+@keyframes pulseHand {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+.ar-hint-text {
   font-size: 13px;
   font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-}
-
-.tutorial-btn:active {
-  transform: scale(0.97);
-}
-
-.tutorial-btn.secondary {
-  background: transparent;
-  color: var(--ink-soft);
-}
-
-.tutorial-btn.secondary:hover {
-  background: rgba(0, 0, 0, 0.05);
   color: var(--ink);
+  letter-spacing: -0.01em;
 }
 
-.tutorial-btn.primary {
-  background: var(--accent);
-  color: white;
+.ar-hint-text .hint-action {
+  color: var(--ink-soft);
+  margin-left: 4px;
 }
 
-.tutorial-btn.primary:hover {
-  background: var(--accent-hover);
-}
-
-.tutorial-btn .done-text {
-  display: none;
-}
-
-.ar-tutorial.last-step .tutorial-btn .next-text {
-  display: none;
-}
-
-.ar-tutorial.last-step .tutorial-btn .done-text {
-  display: inline;
+.ar-hint-step {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ink-faint);
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+  margin-left: 6px;
 }
