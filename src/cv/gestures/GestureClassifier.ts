@@ -50,6 +50,13 @@ function classify(landmarks: Landmark[], hand: Handedness): HandShape {
 
   const fingersExtCount = (indexExt ? 1 : 0) + (middleExt ? 1 : 0) + (ringExt ? 1 : 0) + (pinkyExt ? 1 : 0);
 
+  // Thumb up/down: thumb extended, others curled (check BEFORE fist)
+  if (thumbExt && fingersExtCount === 0) {
+    const thumbTip = landmarks[4];
+    if (thumbTip.y < wrist.y - 0.08) return { hand, shape: 'thumbUp', wrist };
+    if (thumbTip.y > wrist.y + 0.08) return { hand, shape: 'thumbDown', wrist };
+  }
+
   // Fist: no fingers extended (thumb optional)
   if (fingersExtCount === 0) {
     return { hand, shape: 'fist', wrist };
@@ -65,13 +72,6 @@ function classify(landmarks: Landmark[], hand: Handedness): HandShape {
     // Image coords: x grows right, y grows down. Cross sign indicates orientation.
     const palmIn = (hand === 'Right' ? cross > 0 : cross < 0);
     return { hand, shape: palmIn ? 'palmIn' : 'palmOut', wrist };
-  }
-
-  // Thumb up/down: thumb extended, others curled
-  if (thumbExt && fingersExtCount === 0) {
-    const thumbTip = landmarks[4];
-    if (thumbTip.y < wrist.y - 0.08) return { hand, shape: 'thumbUp', wrist };
-    if (thumbTip.y > wrist.y + 0.08) return { hand, shape: 'thumbDown', wrist };
   }
 
   // Pointing: index extended, others curled
