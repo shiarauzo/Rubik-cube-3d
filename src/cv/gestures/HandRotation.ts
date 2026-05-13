@@ -1,22 +1,16 @@
 import type { CubeView } from '../../cube/CubeView';
 import type { Landmark, Handedness, HandShape } from './types';
 
-// Discrete rotation angles for each zone
-const FRONT = 0;
-const LEFT = Math.PI / 2;      // 90 degrees
-const RIGHT = -Math.PI / 2;    // -90 degrees
-const UP = -Math.PI / 4;       // -45 degrees tilt
-const DOWN = Math.PI / 4;      // 45 degrees tilt
+// Rotation mapping: hand Y position (0-1) maps to cube Y rotation
+// Hand at top (y=0) → cube rotated left, hand at bottom (y=1) → cube rotated right
+const MAX_Y_ROTATION = Math.PI * 0.6; // ±108 degrees range
 
-// All possible discrete angles
-const Y_ANGLES = [FRONT, LEFT, RIGHT, Math.PI]; // 0, 90, -90, 180
-const X_ANGLES = [0, UP, DOWN];                  // 0, -45, 45
+// Small tilt based on hand X position
+const MAX_X_TILT = Math.PI / 6; // ±30 degrees
 
-// Zone thresholds (normalized 0-1 coordinates)
-const LEFT_ZONE = 0.35;
-const RIGHT_ZONE = 0.65;
-const UP_ZONE = 0.35;
-const DOWN_ZONE = 0.65;
+// All possible snap angles
+const Y_ANGLES = [0, Math.PI / 2, -Math.PI / 2, Math.PI];
+const X_ANGLES = [0, Math.PI / 6, -Math.PI / 6];
 
 /** Snap to nearest discrete angle */
 function snapToNearest(current: number, angles: number[]): number {
@@ -70,32 +64,28 @@ export class HandRotation {
       this.view.group.rotation.y = snappedY;
       this.view.group.rotation.x = snappedX;
       return; // Skip interpolation
-    } else if (!rightHand) {
-      // No right hand visible, keep current position
+    }
+
+    // Use LEFT hand for rotation (same hand that activates the mode)
+    const trackingHand = leftHand || rightHand;
+    if (!trackingHand) {
+      // No hand visible, keep current position
     } else {
       // Use wrist position (landmark 0) for tracking
-      const wrist = rightHand[0];
+      const wrist = trackingHand[0];
       // Mirror X because video is flipped
       const x = 1 - wrist.x;
       const y = wrist.y;
 
-      // Determine horizontal zone (left, center, right)
-      if (x < LEFT_ZONE) {
-        this.targetY = LEFT;
-      } else if (x > RIGHT_ZONE) {
-        this.targetY = RIGHT;
-      } else {
-        this.targetY = FRONT;
-      }
+      // Hand Y position (up/down) controls cube Y rotation (left/right view)
+      // y=0 (top) → rotate left, y=1 (bottom) → rotate right
+      // Center (y=0.5) → front view
+      const normalizedY = (y - 0.5) * 2; // -1 to 1
+      this.targetY = normalizedY * MAX_Y_ROTATION;
 
-      // Determine vertical zone (up, center, down)
-      if (y < UP_ZONE) {
-        this.targetX = UP;
-      } else if (y > DOWN_ZONE) {
-        this.targetX = DOWN;
-      } else {
-        this.targetX = 0;
-      }
+      // Hand X position gives slight tilt (optional, subtle)
+      const normalizedX = (x - 0.5) * 2; // -1 to 1
+      this.targetX = normalizedX * MAX_X_TILT * 0.3; // Very subtle tilt
     }
 
     // Smooth interpolation to target (easing)

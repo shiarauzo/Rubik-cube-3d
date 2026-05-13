@@ -175,6 +175,19 @@ export class App {
             modeColor,
             this.twoHandController.getModeLabel(),
           );
+
+          // Update AR tutorial with detected gesture
+          if (this.arTutorial.isVisible()) {
+            let tutorialGesture: 'open' | 'pinch' | 'fist' | 'none' = 'none';
+            if (frame.bothFists) {
+              tutorialGesture = 'fist';
+            } else if (frame.hands.some(h => h.shape === 'pinch')) {
+              tutorialGesture = 'pinch';
+            } else if (frame.hands.some(h => h.shape === 'palmOut' || h.shape === 'palmIn')) {
+              tutorialGesture = 'open';
+            }
+            this.arTutorial.update(tutorialGesture);
+          }
         }
       }
     } else if (this.mode !== 'ar') {
@@ -260,6 +273,9 @@ export class App {
       this.orbit.enabled = false;
       // Activate grid overlay for layer selection
       this.gridManipulation.setActive(true);
+      // Reset cube to front-facing position
+      this.view.group.rotation.set(0, 0, 0);
+      this.handRotation.reset();
     } else if (prevMode === 'ar') {
       // Restore from AR mode
       if (this.contactShadow) this.contactShadow.visible = true;
