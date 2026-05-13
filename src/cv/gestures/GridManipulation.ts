@@ -20,20 +20,24 @@ interface GrabState {
   direction: 'horizontal' | 'vertical' | null;
 }
 
-// Map grid position to cube face
-// Rows: 0=U layer, 1=E (equator), 2=D layer
-// Cols: 0=L layer, 1=M (middle), 2=R layer
-const ROW_TO_FACE: Record<number, Face | null> = {
-  0: 'U',
-  1: null, // E slice - not standard face
-  2: 'D',
+// Map grid position to cube moves
+// Rows: 0=U layer, 1=E (equator = U' + D), 2=D layer
+// Cols: 0=L layer, 1=M (middle = L' + R), 2=R layer
+const ROW_MOVES: Record<number, { cw: Move; ccw: Move }> = {
+  0: { cw: 'U', ccw: "U'" },
+  1: { cw: "D", ccw: "D'" }, // E slice: move D to simulate middle row
+  2: { cw: "D'", ccw: 'D' },
 };
 
-const COL_TO_FACE: Record<number, Face | null> = {
-  0: 'L',
-  1: null, // M slice - not standard face
-  2: 'R',
+const COL_MOVES: Record<number, { down: Move; up: Move }> = {
+  0: { down: "L'", up: 'L' },
+  1: { down: "R'", up: 'R' }, // M slice: move R' to simulate middle col
+  2: { down: 'R', up: "R'" },
 };
+
+// For highlighting (only outer faces)
+const ROW_TO_FACE: Record<number, Face | null> = { 0: 'U', 1: null, 2: 'D' };
+const COL_TO_FACE: Record<number, Face | null> = { 0: 'L', 1: null, 2: 'R' };
 
 const DRAG_THRESHOLD = 0.04;
 
@@ -243,30 +247,16 @@ export class GridManipulation {
 
     if (direction === 'horizontal') {
       // Horizontal drag = rotate the row
-      const face = ROW_TO_FACE[cell.row];
-      if (face) {
-        // Video is mirrored, so raw dx < 0 means visual drag to the right
-        // For U: right drag = U' (counter-clockwise when looking down)
-        // For D: right drag = D (clockwise when looking down)
-        const rightDrag = dx < 0;
-        if (face === 'U') {
-          move = rightDrag ? "U'" : 'U';
-        } else if (face === 'D') {
-          move = rightDrag ? 'D' : "D'";
-        }
-      }
+      const moves = ROW_MOVES[cell.row];
+      // Video is mirrored, so raw dx < 0 means visual drag to the right
+      const rightDrag = dx < 0;
+      move = rightDrag ? moves.ccw : moves.cw;
     } else if (direction === 'vertical') {
       // Vertical drag = rotate the column
-      const face = COL_TO_FACE[cell.col];
-      if (face) {
-        // dy > 0 means drag down
-        const downDrag = dy > 0;
-        if (face === 'R') {
-          move = downDrag ? 'R' : "R'";
-        } else if (face === 'L') {
-          move = downDrag ? "L'" : 'L';
-        }
-      }
+      const moves = COL_MOVES[cell.col];
+      // dy > 0 means drag down
+      const downDrag = dy > 0;
+      move = downDrag ? moves.down : moves.up;
     }
 
     if (move && !this.engine.isBusy()) {
