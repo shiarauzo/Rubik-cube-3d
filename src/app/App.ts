@@ -48,6 +48,7 @@ export class App {
   private mode: Mode = 'mouse';
   private cvFrame = 0;
   private pivot: THREE.Group;
+  private busy = false;
 
   constructor() {
     const canvas = document.getElementById('three-canvas') as HTMLCanvasElement;
@@ -152,7 +153,10 @@ export class App {
           }
 
           // Process through TwoHandController (coordinates rotation + manipulation + solver)
-          this.twoHandController.processFrame(frame, landmarksMap);
+          // Only process gestures if not busy with scramble/solve
+          if (!this.busy) {
+            this.twoHandController.processFrame(frame, landmarksMap);
+          }
 
           // Get mode state for visual feedback
           const modeColor = this.twoHandController.getModeColor();
@@ -196,7 +200,17 @@ export class App {
       b: 'B', B: "B'",
     };
     window.addEventListener('keydown', (e) => {
-      if (e.target && (e.target as HTMLElement).tagName === 'INPUT') return;
+      // Skip if any interactive element is focused
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
+        return;
+      }
+
+      // Ignore held-down keys (prevent spam)
+      if (e.repeat) return;
+
+      if (this.busy) return;
       const move = map[e.key];
       if (move) {
         this.engine.queueMove(move);
@@ -205,12 +219,15 @@ export class App {
   }
 
   private async scramble(): Promise<void> {
-    const moves = generateScramble(22);
-    bus.emit('cube:scrambled', { moves });
-    this.engine.resetCounter();
-    for (const m of moves) {
-      this.engine.setSilent();
-      await this.engine.queueMove(m);
+    if (this.busy) return;
+    this.busy = true;
+    try {
+      const moves = generateScramble(22);
+      bus.emit('cube:scrambled', { moves });
+      this.engine.resetCounter();
+      await this.engine.queueSequence(moves, { silent: true });
+    } finally {
+      this.busy = false;
     }
   }
 
@@ -222,6 +239,7 @@ export class App {
   }
 
   private async solve(): Promise<void> {
+    if (this.busy) return;
     if (!this.solver.isReady()) {
       bus.emit('toast', { message: 'Solver cargando, espera unos segundos…', kind: 'warn' });
       return;
@@ -230,15 +248,16 @@ export class App {
       bus.emit('toast', { message: 'Ya está resuelto', kind: 'info' });
       return;
     }
+    this.busy = true;
     try {
       const facelets = this.model.getFacelets();
       const moves = await this.solver.solve(facelets);
       const expanded = expandHalfTurns(moves as Move[]);
-      for (const m of expanded) {
-        await this.engine.queueMove(m);
-      }
+      await this.engine.queueSequence(expanded, { silent: true });
     } catch (err) {
       bus.emit('toast', { message: `Error al resolver: ${(err as Error).message}`, kind: 'error' });
+    } finally {
+      this.busy = false;
     }
   }
 
