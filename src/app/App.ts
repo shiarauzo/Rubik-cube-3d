@@ -82,6 +82,7 @@ export class App {
     this.handTracker = new HandTracker();
     this.gestureClassifier = new GestureClassifier();
     this.handRotation = new HandRotation(this.view);
+    this.handRotation.setCamera(this.camera);
     this.gridManipulation = new GridManipulation(this.view, this.engine);
     this.twoHandController = new TwoHandController(
       this.handRotation,
