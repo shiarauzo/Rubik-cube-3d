@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import type { CubeView } from '../../cube/CubeView';
 import type { Landmark, Handedness, HandShape } from './types';
 
-// Rotation smoothing
-const SMOOTHING = 0.15;
+// Adaptive smoothing
+const SMOOTHING_MIN = 0.08; // Fast when far from target
+const SMOOTHING_MAX = 0.25; // Slow when near target
 
 // Swipe detection
 const SWIPE_THRESHOLD = 0.12;
@@ -30,6 +31,9 @@ export class HandRotation {
 
   // Reference to camera for zoom
   private camera: THREE.PerspectiveCamera | null = null;
+
+  // Snap animation state
+  private isSnapping = false;
 
   constructor(private view: CubeView) {}
 
@@ -127,13 +131,51 @@ export class HandRotation {
       this.swipeStartPos = null;
     }
 
+    // Adaptive smoothing - more smoothing when close to target (reduces overshoot)
+    const deltaX = Math.abs(this.targetX - this.currentX);
+    const deltaY = Math.abs(this.targetY - this.currentY);
+    const maxDelta = Math.max(deltaX, deltaY);
+
+    const smoothing = SMOOTHING_MIN + (SMOOTHING_MAX - SMOOTHING_MIN) * (1 - Math.min(1, maxDelta / (Math.PI / 4)));
+
     // Smooth interpolation
-    this.currentY += (this.targetY - this.currentY) * SMOOTHING;
-    this.currentX += (this.targetX - this.currentX) * SMOOTHING;
+    this.currentY += (this.targetY - this.currentY) * smoothing;
+    this.currentX += (this.targetX - this.currentX) * smoothing;
 
     // Apply rotation
     this.view.group.rotation.y = this.currentY;
     this.view.group.rotation.x = this.currentX;
+  }
+
+  snapToNearest90(): void {
+    if (this.isSnapping) return;
+
+    const snappedY = Math.round(this.currentY / (Math.PI / 2)) * (Math.PI / 2);
+    const snappedX = Math.round(this.currentX / (Math.PI / 2)) * (Math.PI / 2);
+
+    this.animateSnap(this.currentY, snappedY, this.currentX, snappedX, 200);
+  }
+
+  private animateSnap(fromY: number, toY: number, fromX: number, toX: number, duration: number): void {
+    this.isSnapping = true;
+    const start = performance.now();
+
+    const tick = (): void => {
+      const t = Math.min(1, (performance.now() - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+
+      this.currentY = fromY + (toY - fromY) * eased;
+      this.currentX = fromX + (toX - fromX) * eased;
+      this.view.group.rotation.y = this.currentY;
+      this.view.group.rotation.x = this.currentX;
+
+      if (t < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        this.isSnapping = false;
+      }
+    };
+    tick();
   }
 
   reset(): void {

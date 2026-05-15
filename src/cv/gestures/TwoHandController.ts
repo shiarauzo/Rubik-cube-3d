@@ -47,7 +47,7 @@ export class TwoHandController {
         break;
 
       case 'MANIPULATION':
-        this.handleManipulation(leftHand, rightHand, bothFists, frame, landmarks);
+        this.handleManipulation(leftHand, rightHand, bothFists, landmarks);
         break;
 
       case 'SOLVER_CHARGING':
@@ -121,8 +121,9 @@ export class TwoHandController {
       return;
     }
 
-    // Left hand palmIn triggers snap
+    // Left hand palmIn triggers snap to 90 degrees
     if (leftHand?.shape === 'palmIn') {
+      this.handRotation.snapToNearest90();
       this.handRotation.processFrame(landmarks, [leftHand, rightHand].filter(Boolean) as HandShape[]);
       return;
     }
@@ -142,7 +143,6 @@ export class TwoHandController {
     leftHand: HandShape | undefined,
     rightHand: HandShape | undefined,
     bothFists: boolean,
-    _frame: GestureFrame,
     landmarks: Map<Handedness, Landmark[]>,
   ): void {
     // Check for mode transitions
