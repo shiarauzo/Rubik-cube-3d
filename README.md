@@ -39,9 +39,9 @@ lowercase = standard turn, uppercase = prime.
 | `l` / `L` | L / L' | `b` / `B` | B / B' |
 
 ### AR Mode
-Uses MediaPipe HandLandmarker to track your hand via webcam.
+Uses MediaPipe HandLandmarker to track your hands via webcam.
 
-**Cube rotation (right hand):**
+**Cube rotation (left hand - open palm):**
 
 | Hand position | Cube rotation |
 |---|---|
@@ -50,20 +50,32 @@ Uses MediaPipe HandLandmarker to track your hand via webcam.
 | Hand up | Cube tilts up |
 | Hand down | Cube tilts down |
 | Hand at center | Cube faces forward |
-| Open palm | Return to front view |
+| Palm facing in | Snap to nearest 90° |
+| Fist | Zoom out |
 
 The rotation is smooth and position-based (not velocity-based), making it
 easy to control.
 
-**Layer manipulation (pinch gesture):**
+**Layer manipulation (two-hand mode):**
 
-A 3×3 grid overlay appears on the camera feed. Pinch (thumb + index finger)
-on any cell and drag:
-- **Horizontal drag** → rotates that row (U, D layers)
-- **Vertical drag** → rotates that column (L, R layers)
+1. Left hand pinch → activates manipulation mode
+2. Right hand pinch on any grid cell and drag:
+   - **Horizontal drag** → rotates that row (U, D layers)
+   - **Vertical drag** → rotates that column (L, R layers)
 
-The grid provides clear visual feedback, highlighting the selected row or
-column as you drag.
+A 3×3 grid overlay appears with visual feedback, highlighting the selected
+row or column as you drag.
+
+**One-hand manipulation mode:**
+
+If no left hand is detected, you can use only your right hand:
+- Right hand pinch → both selects and manipulates the grid cell
+- Drag horizontally or vertically to rotate layers
+- Yellow indicator shows one-hand mode is active
+
+**Auto-solve gesture:**
+
+Hold both hands in fists for 1.5 seconds to trigger the automatic solver.
 
 ---
 
