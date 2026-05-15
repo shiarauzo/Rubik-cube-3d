@@ -2,6 +2,13 @@ import type { Face, Move } from '../../types';
 import type { CubeView } from '../../cube/CubeView';
 import type { MoveEngine } from '../../cube/MoveEngine';
 import type { HandShape, Handedness, Landmark } from './types';
+import {
+  DRAG_THRESHOLD,
+  GRID_PADDING,
+  GRID_SIZE,
+  THUMB_TIP,
+  INDEX_TIP,
+} from './constants';
 
 type Phase = 'IDLE' | 'PINCHING' | 'DRAGGING';
 
@@ -39,8 +46,6 @@ const COL_MOVES: Record<number, { down: Move; up: Move }> = {
 // For highlighting (only outer faces)
 const ROW_TO_FACE: Record<number, Face | null> = { 0: 'U', 1: null, 2: 'D' };
 const COL_TO_FACE: Record<number, Face | null> = { 0: 'L', 1: null, 2: 'R' };
-
-const DRAG_THRESHOLD = 0.04;
 
 export class GridManipulation {
   private phase: Phase = 'IDLE';
@@ -103,8 +108,8 @@ export class GridManipulation {
   }
 
   private getPinchPoint(landmarks: Landmark[]): { x: number; y: number } {
-    const thumb = landmarks[4];
-    const index = landmarks[8];
+    const thumb = landmarks[THUMB_TIP];
+    const index = landmarks[INDEX_TIP];
     return {
       x: (thumb.x + index.x) / 2,
       y: (thumb.y + index.y) / 2,
@@ -115,17 +120,16 @@ export class GridManipulation {
     // Mirror x for flipped video
     const mirroredX = 1 - x;
 
-    // Grid occupies center area with padding (8% on each side = 84% area)
-    const padding = 0.08;
-    const gridSize = 1 - 2 * padding;
+    // Grid occupies center area with padding
+    const gridSize = 1 - 2 * GRID_PADDING;
 
-    const relX = (mirroredX - padding) / gridSize;
-    const relY = (y - padding) / gridSize;
+    const relX = (mirroredX - GRID_PADDING) / gridSize;
+    const relY = (y - GRID_PADDING) / gridSize;
 
     if (relX < 0 || relX > 1 || relY < 0 || relY > 1) return null;
 
-    const col = Math.floor(relX * 3);
-    const row = Math.floor(relY * 3);
+    const col = Math.floor(relX * GRID_SIZE);
+    const row = Math.floor(relY * GRID_SIZE);
 
     return {
       row: Math.min(2, Math.max(0, row)),

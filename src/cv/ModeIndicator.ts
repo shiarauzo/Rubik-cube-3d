@@ -4,6 +4,7 @@ const COLOR_MAP: Record<ModeColor, string> = {
   white: '#ffffff',
   blue: '#3b82f6',
   green: '#22c55e',
+  yellow: '#eab308',
   purple: '#a855f7',
 };
 

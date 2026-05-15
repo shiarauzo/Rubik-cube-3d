@@ -7,12 +7,11 @@ import type { CubeModel } from '../../cube/CubeModel';
 import type { Move } from '../../types';
 import { expandHalfTurns } from '../../cube/Notation';
 import { bus } from '../../app/events';
+import { SOLVER_CHARGE_TIME } from './constants';
 
-export type ControllerState = 'IDLE' | 'ROTATION' | 'MANIPULATION' | 'SOLVER_CHARGING' | 'SOLVING';
+export type ControllerState = 'IDLE' | 'ROTATION' | 'MANIPULATION' | 'ONE_HAND_MANIPULATION' | 'SOLVER_CHARGING' | 'SOLVING';
 
-export type ModeColor = 'white' | 'blue' | 'green' | 'purple';
-
-const SOLVER_CHARGE_TIME = 1500; // 1.5 seconds
+export type ModeColor = 'white' | 'blue' | 'green' | 'yellow' | 'purple';
 
 export class TwoHandController {
   private state: ControllerState = 'IDLE';
@@ -50,6 +49,10 @@ export class TwoHandController {
         this.handleManipulation(leftHand, rightHand, bothFists, landmarks);
         break;
 
+      case 'ONE_HAND_MANIPULATION':
+        this.handleOneHandManipulation(leftHand, rightHand, bothFists, landmarks);
+        break;
+
       case 'SOLVER_CHARGING':
         this.handleSolverCharging(bothFists);
         break;
@@ -70,7 +73,7 @@ export class TwoHandController {
     bothFists: boolean,
     landmarks: Map<Handedness, Landmark[]>,
   ): void {
-    // Priority: solver > manipulation > rotation
+    // Priority: solver > manipulation > one-hand manipulation > rotation
     if (bothFists) {
       this.state = 'SOLVER_CHARGING';
       this.solverChargeStart = performance.now();
@@ -79,8 +82,17 @@ export class TwoHandController {
       return;
     }
 
+    // Two-hand manipulation (left pinch activates, right manipulates)
     if (leftHand?.shape === 'pinch') {
       this.state = 'MANIPULATION';
+      this.handRotation.setEnabled(false);
+      this.gridManipulation.setActive(true);
+      return;
+    }
+
+    // One-hand manipulation (only right hand pinch, no left hand)
+    if (!leftHand && rightHand?.shape === 'pinch') {
+      this.state = 'ONE_HAND_MANIPULATION';
       this.handRotation.setEnabled(false);
       this.gridManipulation.setActive(true);
       return;
@@ -165,6 +177,48 @@ export class TwoHandController {
     this.gridManipulation.processFrame(rightOnlyHands, landmarks);
   }
 
+  private handleOneHandManipulation(
+    leftHand: HandShape | undefined,
+    rightHand: HandShape | undefined,
+    bothFists: boolean,
+    landmarks: Map<Handedness, Landmark[]>,
+  ): void {
+    // Check for mode transitions
+    if (bothFists) {
+      this.state = 'SOLVER_CHARGING';
+      this.solverChargeStart = performance.now();
+      this.gridManipulation.setActive(false);
+      return;
+    }
+
+    // If left hand appears, could transition to two-hand manipulation or rotation
+    if (leftHand) {
+      if (leftHand.shape === 'pinch') {
+        this.state = 'MANIPULATION';
+        // Keep grid manipulation active
+        return;
+      }
+      if (leftHand.shape === 'palmOut' || leftHand.shape === 'palmIn') {
+        this.state = 'ROTATION';
+        this.handRotation.setEnabled(true);
+        this.gridManipulation.setActive(false);
+        this.handRotation.processFrame(landmarks, [leftHand, rightHand].filter(Boolean) as HandShape[]);
+        return;
+      }
+    }
+
+    // Right hand must maintain pinch to stay in one-hand manipulation mode
+    if (rightHand?.shape !== 'pinch') {
+      this.state = 'IDLE';
+      this.gridManipulation.setActive(false);
+      return;
+    }
+
+    // Process right hand for both selection and manipulation
+    const rightHandArray = rightHand ? [rightHand] : [];
+    this.gridManipulation.processFrame(rightHandArray, landmarks);
+  }
+
   private handleSolverCharging(bothFists: boolean): void {
     if (!bothFists) {
       // Cancelled - return to idle
@@ -227,6 +281,8 @@ export class TwoHandController {
         return 'blue';
       case 'MANIPULATION':
         return 'green';
+      case 'ONE_HAND_MANIPULATION':
+        return 'yellow';
       case 'SOLVER_CHARGING':
       case 'SOLVING':
         return 'purple';
@@ -241,6 +297,8 @@ export class TwoHandController {
         return 'ROTAR';
       case 'MANIPULATION':
         return 'MANIPULAR';
+      case 'ONE_HAND_MANIPULATION':
+        return 'UNA MANO';
       case 'SOLVER_CHARGING':
         return 'CARGANDO...';
       case 'SOLVING':

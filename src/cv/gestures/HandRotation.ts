@@ -1,18 +1,21 @@
 import * as THREE from 'three';
 import type { CubeView } from '../../cube/CubeView';
 import type { Landmark, Handedness, HandShape } from './types';
-
-// Adaptive smoothing
-const SMOOTHING_MIN = 0.08; // Fast when far from target
-const SMOOTHING_MAX = 0.25; // Slow when near target
-
-// Swipe detection
-const SWIPE_THRESHOLD = 0.12;
-const SWIPE_TIME_MS = 300;
-
-// Zoom limits
-const MAX_ZOOM = 12;
-const DEFAULT_ZOOM = 5.4;
+import {
+  SMOOTHING_MIN,
+  SMOOTHING_MAX,
+  SWIPE_THRESHOLD,
+  SWIPE_TIME_MS,
+  MAX_ZOOM,
+  DEFAULT_ZOOM,
+  ZOOM_SPEED,
+  ZOOM_OUT_SPEED,
+  MAX_ROTATION_Y,
+  MAX_ROTATION_X,
+  SWIPE_ROTATION_Y,
+  SWIPE_ROTATION_X,
+  SNAP_ANIMATION_DURATION,
+} from './constants';
 
 export class HandRotation {
   private targetY = 0;
@@ -63,17 +66,17 @@ export class HandRotation {
     // Check for zoom gesture (all fingers together = pinch closed)
     if (leftShape?.shape === 'fist') {
       // Zoom out when fist
-      this.targetZoom = Math.min(MAX_ZOOM, this.targetZoom + 0.15);
+      this.targetZoom = Math.min(MAX_ZOOM, this.targetZoom + ZOOM_OUT_SPEED);
     } else if (leftShape?.shape === 'palmOut' || leftShape?.shape === 'palmIn') {
       // Zoom in when palm open (gradually return to default)
       if (this.targetZoom > DEFAULT_ZOOM) {
-        this.targetZoom = Math.max(DEFAULT_ZOOM, this.targetZoom - 0.1);
+        this.targetZoom = Math.max(DEFAULT_ZOOM, this.targetZoom - ZOOM_SPEED);
       }
     }
 
     // Apply zoom smoothly
     if (this.camera) {
-      this.currentZoom += (this.targetZoom - this.currentZoom) * 0.1;
+      this.currentZoom += (this.targetZoom - this.currentZoom) * ZOOM_SPEED;
       const dir = this.camera.position.clone().normalize();
       this.camera.position.copy(dir.multiplyScalar(this.currentZoom));
     }
@@ -104,11 +107,11 @@ export class HandRotation {
         if (swipeTime < SWIPE_TIME_MS) {
           if (Math.abs(swipeDx) > SWIPE_THRESHOLD && Math.abs(swipeDx) > Math.abs(swipeDy)) {
             // Horizontal swipe - add momentum to Y rotation
-            this.targetY += swipeDx > 0 ? Math.PI / 2 : -Math.PI / 2;
+            this.targetY += swipeDx > 0 ? SWIPE_ROTATION_Y : -SWIPE_ROTATION_Y;
             this.swipeStartPos = null;
           } else if (Math.abs(swipeDy) > SWIPE_THRESHOLD && Math.abs(swipeDy) > Math.abs(swipeDx)) {
             // Vertical swipe - add momentum to X rotation
-            this.targetX += swipeDy > 0 ? Math.PI / 4 : -Math.PI / 4;
+            this.targetX += swipeDy > 0 ? SWIPE_ROTATION_X : -SWIPE_ROTATION_X;
             this.targetX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.targetX));
             this.swipeStartPos = null;
           }
@@ -122,8 +125,8 @@ export class HandRotation {
         const centerOffsetX = (x - 0.5) * 2; // -1 to 1
         const centerOffsetY = (y - 0.5) * 2; // -1 to 1
 
-        this.targetY = centerOffsetX * Math.PI * 0.6; // Max ±108 degrees
-        this.targetX = centerOffsetY * Math.PI * 0.25; // Max ±45 degrees
+        this.targetY = centerOffsetX * MAX_ROTATION_Y;
+        this.targetX = centerOffsetY * MAX_ROTATION_X;
       }
 
       this.lastWristPos = { x, y };
@@ -153,7 +156,7 @@ export class HandRotation {
     const snappedY = Math.round(this.currentY / (Math.PI / 2)) * (Math.PI / 2);
     const snappedX = Math.round(this.currentX / (Math.PI / 2)) * (Math.PI / 2);
 
-    this.animateSnap(this.currentY, snappedY, this.currentX, snappedX, 200);
+    this.animateSnap(this.currentY, snappedY, this.currentX, snappedX, SNAP_ANIMATION_DURATION);
   }
 
   private animateSnap(fromY: number, toY: number, fromX: number, toX: number, duration: number): void {

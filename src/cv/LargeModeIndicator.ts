@@ -4,12 +4,14 @@ const COLOR_MAP: Record<ModeColor, string> = {
   white: '#ffffff',
   blue: '#3b82f6',
   green: '#22c55e',
+  yellow: '#eab308',
   purple: '#a855f7',
 };
 
 const HINT_MAP: Record<string, string> = {
   ROTAR: 'Mueve la mano para girar',
   MANIPULAR: 'Arrastra para mover capa',
+  'UNA MANO': 'Arrastra con una mano',
   CARGANDO: 'Manten los punos...',
   RESOLVIENDO: 'Calculando solucion...',
 };
