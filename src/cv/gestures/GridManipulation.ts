@@ -21,17 +21,18 @@ interface GrabState {
 }
 
 // Map grid position to cube moves
-// Rows: 0=U layer, 1=E (equator = U' + D), 2=D layer
-// Cols: 0=L layer, 1=M (middle = L' + R), 2=R layer
+// Rows: 0=U layer, 1=middle (using D for equator behavior), 2=D layer
+// Cols: 0=L layer, 1=middle (using R for middle column behavior), 2=R layer
+// Note: Middle moves use inverted directions to match intuitive gesture mapping
 const ROW_MOVES: Record<number, { cw: Move; ccw: Move }> = {
   0: { cw: 'U', ccw: "U'" },
-  1: { cw: "D", ccw: "D'" }, // E slice: move D to simulate middle row
+  1: { cw: "D'", ccw: 'D' }, // Middle row - inverted from normal D move for intuitive gesture
   2: { cw: "D'", ccw: 'D' },
 };
 
 const COL_MOVES: Record<number, { down: Move; up: Move }> = {
   0: { down: "L'", up: 'L' },
-  1: { down: "R'", up: 'R' }, // M slice: move R' to simulate middle col
+  1: { down: 'R', up: "R'" }, // Middle col - matches normal R direction
   2: { down: 'R', up: "R'" },
 };
 
@@ -153,9 +154,8 @@ export class GridManipulation {
       direction: null,
     };
 
-    // Highlight the active cell
-    const cellEl = this.getCellElement(cell.row, cell.col);
-    if (cellEl) cellEl.classList.add('pinch-active');
+    // Show predictive highlights for both row and column
+    this.showPredictiveHighlight(cell);
   }
 
   private checkDragStart(landmarks: Landmark[]): void {
@@ -172,7 +172,8 @@ export class GridManipulation {
     this.grabState.direction = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
     this.phase = 'DRAGGING';
 
-    // Highlight the row or column based on direction
+    // Clear predictive highlights and show confirmed direction
+    this.clearPredictiveHighlight();
     this.highlightLayer();
   }
 
@@ -217,15 +218,36 @@ export class GridManipulation {
     this.highlightLayer();
   }
 
+  private showPredictiveHighlight(cell: GridCell): void {
+    // Highlight both row and column with reduced opacity
+    for (let c = 0; c < 3; c++) {
+      const el = this.getCellElement(cell.row, c);
+      if (el) el.classList.add('predict-row');
+    }
+    for (let r = 0; r < 3; r++) {
+      const el = this.getCellElement(r, cell.col);
+      if (el) el.classList.add('predict-col');
+    }
+  }
+
+  private clearPredictiveHighlight(): void {
+    // Clear all prediction classes from grid cells
+    const cells = this.gridOverlay?.querySelectorAll('.grid-cell');
+    cells?.forEach((cell) => {
+      cell.classList.remove('predict-row', 'predict-col');
+    });
+  }
+
   private clearHighlights(): void {
     for (const cell of this.cells) {
-      cell.classList.remove('pinch-active', 'highlight-row', 'highlight-col');
+      cell.classList.remove('highlight-row', 'highlight-col', 'predict-row', 'predict-col');
     }
     // Clear 3D cube highlight
     this.view.highlightLayer(null);
   }
 
   private cancelGrab(): void {
+    this.clearPredictiveHighlight();
     this.clearHighlights();
     this.grabState = null;
     this.phase = 'IDLE';
@@ -260,7 +282,7 @@ export class GridManipulation {
     }
 
     if (move && !this.engine.isBusy()) {
-      this.engine.queueMove(move as Move);
+      this.engine.queueMove(move);
     }
 
     this.clearHighlights();

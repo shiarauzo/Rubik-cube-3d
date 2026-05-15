@@ -234,6 +234,16 @@ html, body {
   transition: background 0.15s, border-color 0.15s, transform 0.12s;
 }
 
+.grid-cell.predict-row,
+.grid-cell.predict-col {
+  background: rgba(255, 255, 255, 0.12);
+  transition: background 150ms ease;
+}
+
+.grid-cell.predict-row.predict-col {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 .grid-cell.highlight-row {
   background: rgba(100, 200, 255, 0.15);
   border-color: rgba(100, 200, 255, 0.5);
@@ -242,12 +252,6 @@ html, body {
 .grid-cell.highlight-col {
   background: rgba(255, 180, 100, 0.15);
   border-color: rgba(255, 180, 100, 0.5);
-}
-
-.grid-cell.pinch-active {
-  background: rgba(120, 255, 150, 0.2);
-  border-color: rgba(120, 255, 150, 0.6);
-  transform: scale(0.95);
 }
 
 /* HUD ---------------------------------------------------------------------- */
