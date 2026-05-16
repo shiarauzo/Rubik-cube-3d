@@ -130,54 +130,6 @@ html, body {
   text-transform: uppercase;
 }
 
-/* Large Mode Indicator (screen center) */
-.mode-indicator-large {
-  --mode-color: #ffffff;
-  position: fixed;
-  top: 100px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 12px 28px;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(12px);
-  border-radius: 16px;
-  border: 2px solid var(--mode-color);
-  z-index: 25;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
-}
-
-.mode-indicator-large.active {
-  display: flex;
-  opacity: 1;
-}
-
-.mode-indicator-large.fade-out {
-  opacity: 0;
-  transform: translateX(-50%) translateY(-10px);
-}
-
-.mode-label-large {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--mode-color);
-  text-transform: uppercase;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-}
-
-.mode-hint-large {
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.7);
-}
-
 /* Solver progress ring (inside mode indicator) */
 .solver-progress-container {
   display: none;
@@ -234,16 +186,6 @@ html, body {
   transition: background 0.15s, border-color 0.15s, transform 0.12s;
 }
 
-.grid-cell.predict-row,
-.grid-cell.predict-col {
-  background: rgba(255, 255, 255, 0.12);
-  transition: background 150ms ease;
-}
-
-.grid-cell.predict-row.predict-col {
-  background: rgba(255, 255, 255, 0.2);
-}
-
 .grid-cell.highlight-row {
   background: rgba(100, 200, 255, 0.15);
   border-color: rgba(100, 200, 255, 0.5);
@@ -252,6 +194,12 @@ html, body {
 .grid-cell.highlight-col {
   background: rgba(255, 180, 100, 0.15);
   border-color: rgba(255, 180, 100, 0.5);
+}
+
+.grid-cell.pinch-active {
+  background: rgba(120, 255, 150, 0.2);
+  border-color: rgba(120, 255, 150, 0.6);
+  transform: scale(0.95);
 }
 
 /* HUD ---------------------------------------------------------------------- */
@@ -498,100 +446,4 @@ html, body {
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
-}
-
-/* AR Hint (lightweight tutorial) ----------------------------------------- */
-
-.ar-hint {
-  position: fixed;
-  top: 90px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 50;
-  display: none;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  background: var(--glass);
-  -webkit-backdrop-filter: blur(22px) saturate(1.5);
-  backdrop-filter: blur(22px) saturate(1.5);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.25s, border-color 0.2s;
-}
-
-.ar-hint.active {
-  display: flex;
-  opacity: 1;
-}
-
-.ar-hint.detecting {
-  border-color: var(--ink-soft);
-}
-
-.ar-hint.success {
-  border-color: var(--ink);
-}
-
-.ar-hint-content {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.ar-hint-icon {
-  font-size: 20px;
-  line-height: 1;
-}
-
-/* Subtle hand animations */
-.ar-hint-icon.anim-wave {
-  animation: waveHand 1.5s ease-in-out infinite;
-}
-
-.ar-hint-icon.anim-pinch {
-  animation: pinchHand 1.2s ease-in-out infinite;
-}
-
-.ar-hint-icon.anim-fist {
-  animation: pulseHand 1.2s ease-in-out infinite;
-}
-
-@keyframes waveHand {
-  0%, 100% { transform: translateY(-2px); }
-  50% { transform: translateY(2px); }
-}
-
-@keyframes pinchHand {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(0.92); }
-}
-
-@keyframes pulseHand {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.1); opacity: 0.8; }
-}
-
-.ar-hint-text {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink);
-  letter-spacing: -0.01em;
-}
-
-.ar-hint-text .hint-action {
-  color: var(--ink-soft);
-  margin-left: 4px;
-}
-
-.ar-hint-step {
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--ink-faint);
-  padding-left: 10px;
-  border-left: 1px solid var(--line);
-  margin-left: 6px;
 }

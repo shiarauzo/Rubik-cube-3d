@@ -3,17 +3,6 @@ import type { Face, Move } from '../../types';
 import type { CubeView, Cubie } from '../../cube/CubeView';
 import type { MoveEngine } from '../../cube/MoveEngine';
 import type { HandShape, Handedness, Landmark } from './types';
-import {
-  DIRECT_DRAG_THRESHOLD,
-  ROTATION_SENSITIVITY,
-  FACE_NORMAL_THRESHOLD,
-  AXIS_MATCH_THRESHOLD,
-  DIRECT_SNAP_DURATION,
-  SINGLE_TURN_THRESHOLD,
-  DOUBLE_TURN_THRESHOLD,
-  LANDMARK_THUMB_TIP,
-  LANDMARK_INDEX_TIP,
-} from './constants';
 
 type GrabPhase = 'IDLE' | 'PINCHING' | 'DRAGGING' | 'RELEASING';
 
@@ -44,6 +33,9 @@ const AXIS_TO_FACES: [THREE.Vector3, Face, Face][] = [
   [new THREE.Vector3(0, 1, 0), 'U', 'D'],
   [new THREE.Vector3(0, 0, 1), 'F', 'B'],
 ];
+
+const DRAG_THRESHOLD = 0.03;
+const ROTATION_SENSITIVITY = 3.5;
 
 export class DirectManipulation {
   private raycaster = new THREE.Raycaster();
@@ -102,8 +94,8 @@ export class DirectManipulation {
   }
 
   private getPinchPoint(landmarks: Landmark[]): Landmark {
-    const thumb = landmarks[LANDMARK_THUMB_TIP];
-    const index = landmarks[LANDMARK_INDEX_TIP];
+    const thumb = landmarks[4];
+    const index = landmarks[8];
     return {
       x: (thumb.x + index.x) / 2,
       y: (thumb.y + index.y) / 2,
@@ -134,7 +126,7 @@ export class DirectManipulation {
     const ndc = this.toNDC(pinchPoint);
     const delta = ndc.clone().sub(this.grabState.startNDC);
 
-    if (delta.length() < DIRECT_DRAG_THRESHOLD) return;
+    if (delta.length() < DRAG_THRESHOLD) return;
 
     // Determine layer based on hit and drag direction
     const hit = this.raycastToCube(this.grabState.startNDC.x, this.grabState.startNDC.y);
@@ -189,7 +181,7 @@ export class DirectManipulation {
       }
     }
 
-    if (!hitFace || maxDot < FACE_NORMAL_THRESHOLD) return null;
+    if (!hitFace || maxDot < 0.8) return null;
 
     // Get the cubie's position
     let cubie: Cubie | null = null;
@@ -232,7 +224,7 @@ export class DirectManipulation {
       }
     }
 
-    if (bestAxisIdx < 0 || bestDot < AXIS_MATCH_THRESHOLD) return null;
+    if (bestAxisIdx < 0 || bestDot < 0.5) return null;
 
     const [standardAxis, posFace, negFace] = AXIS_TO_FACES[bestAxisIdx];
     const sign = rotationAxis.dot(standardAxis) > 0 ? 1 : -1;
@@ -318,10 +310,10 @@ export class DirectManipulation {
     let targetAngle: number;
     let move: Move | null = null;
 
-    if (absAngle < SINGLE_TURN_THRESHOLD) {
+    if (absAngle < Math.PI / 4) {
       // Less than 45 degrees - cancel
       targetAngle = 0;
-    } else if (absAngle < DOUBLE_TURN_THRESHOLD) {
+    } else if (absAngle < (3 * Math.PI) / 4) {
       // 45-135 degrees - single turn
       targetAngle = angle > 0 ? Math.PI / 2 : -Math.PI / 2;
       const suffix = angle > 0 ? "'" : '';
@@ -363,7 +355,7 @@ export class DirectManipulation {
     _cubies: Cubie[],
   ): Promise<void> {
     return new Promise((resolve) => {
-      const duration = DIRECT_SNAP_DURATION;
+      const duration = 150;
       const start = performance.now();
 
       const tick = () => {

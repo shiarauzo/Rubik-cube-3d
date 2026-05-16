@@ -16,8 +16,6 @@ import { GridManipulation } from '../cv/gestures/GridManipulation';
 import { TwoHandController } from '../cv/gestures/TwoHandController';
 import { HandOverlay } from '../cv/HandOverlay';
 import { ModeIndicator } from '../cv/ModeIndicator';
-import { LargeModeIndicator } from '../cv/LargeModeIndicator';
-import { ARTutorial } from '../cv/ARTutorial';
 import { bus } from './events';
 import type { Mode, Move } from '../types';
 import { expandHalfTurns } from '../cube/Notation';
@@ -41,8 +39,6 @@ export class App {
   private twoHandController: TwoHandController;
   private handOverlay: HandOverlay;
   private modeIndicator: ModeIndicator;
-  private largeModeIndicator: LargeModeIndicator;
-  private arTutorial: ARTutorial;
   private contactShadow: THREE.Mesh | null = null;
 
   private mode: Mode = 'mouse';
@@ -82,7 +78,6 @@ export class App {
     this.handTracker = new HandTracker();
     this.gestureClassifier = new GestureClassifier();
     this.handRotation = new HandRotation(this.view);
-    this.handRotation.setCamera(this.camera);
     this.gridManipulation = new GridManipulation(this.view, this.engine);
     this.twoHandController = new TwoHandController(
       this.handRotation,
@@ -93,8 +88,6 @@ export class App {
     );
     this.handOverlay = new HandOverlay(overlay);
     this.modeIndicator = new ModeIndicator(document.getElementById('cv-layer')!);
-    this.largeModeIndicator = new LargeModeIndicator(document.getElementById('hud-root')!);
-    this.arTutorial = new ARTutorial(document.getElementById('hud-root')!);
 
     // Find contact shadow in scene for AR mode visibility toggle
     this.scene.traverse((obj) => {
@@ -162,39 +155,18 @@ export class App {
           // Draw hand overlay with mode colors
           this.handOverlay.draw(allLandmarks, isPinching, modeColor, solverProgress);
 
-          // Update mode indicator (small, in cv-layer)
+          // Update mode indicator
           this.modeIndicator.update(
             this.twoHandController.getState(),
             modeColor,
             this.twoHandController.getModeLabel(),
             solverProgress,
           );
-
-          // Update large mode indicator (center screen)
-          this.largeModeIndicator.update(
-            this.twoHandController.getState(),
-            modeColor,
-            this.twoHandController.getModeLabel(),
-          );
-
-          // Update AR tutorial with detected gesture
-          if (this.arTutorial.isVisible()) {
-            let tutorialGesture: 'open' | 'pinch' | 'fist' | 'none' = 'none';
-            if (frame.bothFists) {
-              tutorialGesture = 'fist';
-            } else if (frame.hands.some(h => h.shape === 'pinch')) {
-              tutorialGesture = 'pinch';
-            } else if (frame.hands.some(h => h.shape === 'palmOut' || h.shape === 'palmIn')) {
-              tutorialGesture = 'open';
-            }
-            this.arTutorial.update(tutorialGesture);
-          }
         }
       }
     } else if (this.mode !== 'ar') {
       this.handOverlay.clear();
       this.modeIndicator.hide();
-      this.largeModeIndicator.hide();
     }
 
     this.renderer.render(this.scene, this.camera);
@@ -274,9 +246,6 @@ export class App {
       this.orbit.enabled = false;
       // Activate grid overlay for layer selection
       this.gridManipulation.setActive(true);
-      // Reset cube to front-facing position
-      this.view.group.rotation.set(0, 0, 0);
-      this.handRotation.reset();
     } else if (prevMode === 'ar') {
       // Restore from AR mode
       if (this.contactShadow) this.contactShadow.visible = true;
@@ -302,9 +271,6 @@ export class App {
         console.log('[AR] Initializing hand tracker...');
         await this.handTracker.init();
         console.log('[AR] Hand tracker ready:', this.handTracker.isReady());
-
-        // Show AR tutorial on first entry
-        this.arTutorial.show();
       } catch (e) {
         console.error('[AR] Hand tracker init failed:', e);
       }

@@ -2,13 +2,6 @@ import type { Face, Move } from '../../types';
 import type { CubeView } from '../../cube/CubeView';
 import type { MoveEngine } from '../../cube/MoveEngine';
 import type { HandShape, Handedness, Landmark } from './types';
-import {
-  DRAG_THRESHOLD,
-  GRID_PADDING,
-  GRID_SIZE,
-  THUMB_TIP,
-  INDEX_TIP,
-} from './constants';
 
 type Phase = 'IDLE' | 'PINCHING' | 'DRAGGING';
 
@@ -27,25 +20,22 @@ interface GrabState {
   direction: 'horizontal' | 'vertical' | null;
 }
 
-// Map grid position to cube moves
-// Rows: 0=U layer, 1=middle (using D for equator behavior), 2=D layer
-// Cols: 0=L layer, 1=middle (using R for middle column behavior), 2=R layer
-// Note: Middle moves use inverted directions to match intuitive gesture mapping
-const ROW_MOVES: Record<number, { cw: Move; ccw: Move }> = {
-  0: { cw: 'U', ccw: "U'" },
-  1: { cw: "D'", ccw: 'D' }, // Middle row - inverted from normal D move for intuitive gesture
-  2: { cw: "D'", ccw: 'D' },
+// Map grid position to cube face
+// Rows: 0=U layer, 1=E (equator), 2=D layer
+// Cols: 0=L layer, 1=M (middle), 2=R layer
+const ROW_TO_FACE: Record<number, Face | null> = {
+  0: 'U',
+  1: null, // E slice - not standard face
+  2: 'D',
 };
 
-const COL_MOVES: Record<number, { down: Move; up: Move }> = {
-  0: { down: "L'", up: 'L' },
-  1: { down: 'R', up: "R'" }, // Middle col - matches normal R direction
-  2: { down: 'R', up: "R'" },
+const COL_TO_FACE: Record<number, Face | null> = {
+  0: 'L',
+  1: null, // M slice - not standard face
+  2: 'R',
 };
 
-// For highlighting (only outer faces)
-const ROW_TO_FACE: Record<number, Face | null> = { 0: 'U', 1: null, 2: 'D' };
-const COL_TO_FACE: Record<number, Face | null> = { 0: 'L', 1: null, 2: 'R' };
+const DRAG_THRESHOLD = 0.04;
 
 export class GridManipulation {
   private phase: Phase = 'IDLE';
@@ -108,8 +98,8 @@ export class GridManipulation {
   }
 
   private getPinchPoint(landmarks: Landmark[]): { x: number; y: number } {
-    const thumb = landmarks[THUMB_TIP];
-    const index = landmarks[INDEX_TIP];
+    const thumb = landmarks[4];
+    const index = landmarks[8];
     return {
       x: (thumb.x + index.x) / 2,
       y: (thumb.y + index.y) / 2,
@@ -120,16 +110,17 @@ export class GridManipulation {
     // Mirror x for flipped video
     const mirroredX = 1 - x;
 
-    // Grid occupies center area with padding
-    const gridSize = 1 - 2 * GRID_PADDING;
+    // Grid occupies center area with padding (8% on each side = 84% area)
+    const padding = 0.08;
+    const gridSize = 1 - 2 * padding;
 
-    const relX = (mirroredX - GRID_PADDING) / gridSize;
-    const relY = (y - GRID_PADDING) / gridSize;
+    const relX = (mirroredX - padding) / gridSize;
+    const relY = (y - padding) / gridSize;
 
     if (relX < 0 || relX > 1 || relY < 0 || relY > 1) return null;
 
-    const col = Math.floor(relX * GRID_SIZE);
-    const row = Math.floor(relY * GRID_SIZE);
+    const col = Math.floor(relX * 3);
+    const row = Math.floor(relY * 3);
 
     return {
       row: Math.min(2, Math.max(0, row)),
@@ -158,8 +149,9 @@ export class GridManipulation {
       direction: null,
     };
 
-    // Show predictive highlights for both row and column
-    this.showPredictiveHighlight(cell);
+    // Highlight the active cell
+    const cellEl = this.getCellElement(cell.row, cell.col);
+    if (cellEl) cellEl.classList.add('pinch-active');
   }
 
   private checkDragStart(landmarks: Landmark[]): void {
@@ -176,8 +168,7 @@ export class GridManipulation {
     this.grabState.direction = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
     this.phase = 'DRAGGING';
 
-    // Clear predictive highlights and show confirmed direction
-    this.clearPredictiveHighlight();
+    // Highlight the row or column based on direction
     this.highlightLayer();
   }
 
@@ -222,36 +213,15 @@ export class GridManipulation {
     this.highlightLayer();
   }
 
-  private showPredictiveHighlight(cell: GridCell): void {
-    // Highlight both row and column with reduced opacity
-    for (let c = 0; c < 3; c++) {
-      const el = this.getCellElement(cell.row, c);
-      if (el) el.classList.add('predict-row');
-    }
-    for (let r = 0; r < 3; r++) {
-      const el = this.getCellElement(r, cell.col);
-      if (el) el.classList.add('predict-col');
-    }
-  }
-
-  private clearPredictiveHighlight(): void {
-    // Clear all prediction classes from grid cells
-    const cells = this.gridOverlay?.querySelectorAll('.grid-cell');
-    cells?.forEach((cell) => {
-      cell.classList.remove('predict-row', 'predict-col');
-    });
-  }
-
   private clearHighlights(): void {
     for (const cell of this.cells) {
-      cell.classList.remove('highlight-row', 'highlight-col', 'predict-row', 'predict-col');
+      cell.classList.remove('pinch-active', 'highlight-row', 'highlight-col');
     }
     // Clear 3D cube highlight
     this.view.highlightLayer(null);
   }
 
   private cancelGrab(): void {
-    this.clearPredictiveHighlight();
     this.clearHighlights();
     this.grabState = null;
     this.phase = 'IDLE';
@@ -273,20 +243,34 @@ export class GridManipulation {
 
     if (direction === 'horizontal') {
       // Horizontal drag = rotate the row
-      const moves = ROW_MOVES[cell.row];
-      // Video is mirrored, so raw dx < 0 means visual drag to the right
-      const rightDrag = dx < 0;
-      move = rightDrag ? moves.ccw : moves.cw;
+      const face = ROW_TO_FACE[cell.row];
+      if (face) {
+        // Video is mirrored, so raw dx < 0 means visual drag to the right
+        // For U: right drag = U' (counter-clockwise when looking down)
+        // For D: right drag = D (clockwise when looking down)
+        const rightDrag = dx < 0;
+        if (face === 'U') {
+          move = rightDrag ? "U'" : 'U';
+        } else if (face === 'D') {
+          move = rightDrag ? 'D' : "D'";
+        }
+      }
     } else if (direction === 'vertical') {
       // Vertical drag = rotate the column
-      const moves = COL_MOVES[cell.col];
-      // dy > 0 means drag down
-      const downDrag = dy > 0;
-      move = downDrag ? moves.down : moves.up;
+      const face = COL_TO_FACE[cell.col];
+      if (face) {
+        // dy > 0 means drag down
+        const downDrag = dy > 0;
+        if (face === 'R') {
+          move = downDrag ? 'R' : "R'";
+        } else if (face === 'L') {
+          move = downDrag ? "L'" : 'L';
+        }
+      }
     }
 
     if (move && !this.engine.isBusy()) {
-      this.engine.queueMove(move);
+      this.engine.queueMove(move as Move);
     }
 
     this.clearHighlights();

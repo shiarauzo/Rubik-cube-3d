@@ -1,21 +1,36 @@
-import * as THREE from 'three';
 import type { CubeView } from '../../cube/CubeView';
 import type { Landmark, Handedness, HandShape } from './types';
-import {
-  SMOOTHING_MIN,
-  SMOOTHING_MAX,
-  SWIPE_THRESHOLD,
-  SWIPE_TIME_MS,
-  MAX_ZOOM,
-  DEFAULT_ZOOM,
-  ZOOM_SPEED,
-  ZOOM_OUT_SPEED,
-  MAX_ROTATION_Y,
-  MAX_ROTATION_X,
-  SWIPE_ROTATION_Y,
-  SWIPE_ROTATION_X,
-  SNAP_ANIMATION_DURATION,
-} from './constants';
+
+// Discrete rotation angles for each zone
+const FRONT = 0;
+const LEFT = Math.PI / 2;      // 90 degrees
+const RIGHT = -Math.PI / 2;    // -90 degrees
+const UP = -Math.PI / 4;       // -45 degrees tilt
+const DOWN = Math.PI / 4;      // 45 degrees tilt
+
+// All possible discrete angles
+const Y_ANGLES = [FRONT, LEFT, RIGHT, Math.PI]; // 0, 90, -90, 180
+const X_ANGLES = [0, UP, DOWN];                  // 0, -45, 45
+
+// Zone thresholds (normalized 0-1 coordinates)
+const LEFT_ZONE = 0.35;
+const RIGHT_ZONE = 0.65;
+const UP_ZONE = 0.35;
+const DOWN_ZONE = 0.65;
+
+/** Snap to nearest discrete angle */
+function snapToNearest(current: number, angles: number[]): number {
+  let nearest = angles[0];
+  let minDist = Math.abs(current - nearest);
+  for (const angle of angles) {
+    const dist = Math.abs(current - angle);
+    if (dist < minDist) {
+      minDist = dist;
+      nearest = angle;
+    }
+  }
+  return nearest;
+}
 
 export class HandRotation {
   private targetY = 0;
@@ -24,33 +39,10 @@ export class HandRotation {
   private currentX = 0;
   private enabled = true;
 
-  // Swipe detection state
-  private swipeStartPos: { x: number; y: number; time: number } | null = null;
-  private lastWristPos: { x: number; y: number } | null = null;
-
-  // Zoom state
-  private targetZoom = DEFAULT_ZOOM;
-  private currentZoom = DEFAULT_ZOOM;
-
-  // Reference to camera for zoom
-  private camera: THREE.PerspectiveCamera | null = null;
-
-  // Snap animation state
-  private isSnapping = false;
-
   constructor(private view: CubeView) {}
-
-  setCamera(camera: THREE.PerspectiveCamera): void {
-    this.camera = camera;
-    this.currentZoom = camera.position.length();
-    this.targetZoom = this.currentZoom;
-  }
 
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
-    if (!enabled) {
-      this.swipeStartPos = null;
-    }
   }
 
   isEnabled(): boolean {
@@ -60,88 +52,54 @@ export class HandRotation {
   processFrame(landmarks: Map<Handedness, Landmark[]>, hands?: HandShape[]): void {
     if (!this.enabled) return;
 
+    const rightHand = landmarks.get('Right');
     const leftHand = landmarks.get('Left');
-    const leftShape = hands?.find(h => h.hand === 'Left');
 
-    // Check for zoom gesture (all fingers together = pinch closed)
-    if (leftShape?.shape === 'fist') {
-      // Zoom out when fist
-      this.targetZoom = Math.min(MAX_ZOOM, this.targetZoom + ZOOM_OUT_SPEED);
-    } else if (leftShape?.shape === 'palmOut' || leftShape?.shape === 'palmIn') {
-      // Zoom in when palm open (gradually return to default)
-      if (this.targetZoom > DEFAULT_ZOOM) {
-        this.targetZoom = Math.max(DEFAULT_ZOOM, this.targetZoom - ZOOM_SPEED);
-      }
-    }
+    // Check if left hand is palmIn → snap to nearest face
+    const leftHandShape = hands?.find(h => h.hand === 'Left');
+    const shouldSnap = leftHand && leftHandShape?.shape === 'palmIn';
 
-    // Apply zoom smoothly
-    if (this.camera) {
-      this.currentZoom += (this.targetZoom - this.currentZoom) * ZOOM_SPEED;
-      const dir = this.camera.position.clone().normalize();
-      this.camera.position.copy(dir.multiplyScalar(this.currentZoom));
-    }
-
-    if (!leftHand) {
-      this.lastWristPos = null;
-      this.swipeStartPos = null;
-      return;
-    }
-
-    const wrist = leftHand[0];
-    const x = 1 - wrist.x; // Mirror for flipped video
-    const y = wrist.y;
-
-    // Check for swipe gesture
-    if (leftShape?.shape === 'palmOut' || leftShape?.shape === 'palmIn') {
-      if (this.lastWristPos) {
-        // Track swipe start
-        if (!this.swipeStartPos) {
-          this.swipeStartPos = { x, y, time: performance.now() };
-        }
-
-        // Check for completed swipe
-        const swipeDx = x - this.swipeStartPos.x;
-        const swipeDy = y - this.swipeStartPos.y;
-        const swipeTime = performance.now() - this.swipeStartPos.time;
-
-        if (swipeTime < SWIPE_TIME_MS) {
-          if (Math.abs(swipeDx) > SWIPE_THRESHOLD && Math.abs(swipeDx) > Math.abs(swipeDy)) {
-            // Horizontal swipe - add momentum to Y rotation
-            this.targetY += swipeDx > 0 ? SWIPE_ROTATION_Y : -SWIPE_ROTATION_Y;
-            this.swipeStartPos = null;
-          } else if (Math.abs(swipeDy) > SWIPE_THRESHOLD && Math.abs(swipeDy) > Math.abs(swipeDx)) {
-            // Vertical swipe - add momentum to X rotation
-            this.targetX += swipeDy > 0 ? SWIPE_ROTATION_X : -SWIPE_ROTATION_X;
-            this.targetX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.targetX));
-            this.swipeStartPos = null;
-          }
-        } else {
-          // Reset swipe if taking too long (continuous movement)
-          this.swipeStartPos = { x, y, time: performance.now() };
-        }
-
-        // Continuous rotation based on hand position
-        // Horizontal: left/right of center rotates cube
-        const centerOffsetX = (x - 0.5) * 2; // -1 to 1
-        const centerOffsetY = (y - 0.5) * 2; // -1 to 1
-
-        this.targetY = centerOffsetX * MAX_ROTATION_Y;
-        this.targetX = centerOffsetY * MAX_ROTATION_X;
-      }
-
-      this.lastWristPos = { x, y };
+    if (shouldSnap) {
+      // Snap to nearest face and stay still
+      const snappedY = snapToNearest(this.currentY, Y_ANGLES);
+      const snappedX = snapToNearest(this.currentX, X_ANGLES);
+      this.targetY = snappedY;
+      this.targetX = snappedX;
+      this.currentY = snappedY;
+      this.currentX = snappedX;
+      this.view.group.rotation.y = snappedY;
+      this.view.group.rotation.x = snappedX;
+      return; // Skip interpolation
+    } else if (!rightHand) {
+      // No right hand visible, keep current position
     } else {
-      this.swipeStartPos = null;
+      // Use wrist position (landmark 0) for tracking
+      const wrist = rightHand[0];
+      // Mirror X because video is flipped
+      const x = 1 - wrist.x;
+      const y = wrist.y;
+
+      // Determine horizontal zone (left, center, right)
+      if (x < LEFT_ZONE) {
+        this.targetY = LEFT;
+      } else if (x > RIGHT_ZONE) {
+        this.targetY = RIGHT;
+      } else {
+        this.targetY = FRONT;
+      }
+
+      // Determine vertical zone (up, center, down)
+      if (y < UP_ZONE) {
+        this.targetX = UP;
+      } else if (y > DOWN_ZONE) {
+        this.targetX = DOWN;
+      } else {
+        this.targetX = 0;
+      }
     }
 
-    // Adaptive smoothing - more smoothing when close to target (reduces overshoot)
-    const deltaX = Math.abs(this.targetX - this.currentX);
-    const deltaY = Math.abs(this.targetY - this.currentY);
-    const maxDelta = Math.max(deltaX, deltaY);
-
-    const smoothing = SMOOTHING_MIN + (SMOOTHING_MAX - SMOOTHING_MIN) * (1 - Math.min(1, maxDelta / (Math.PI / 4)));
-
-    // Smooth interpolation
+    // Smooth interpolation to target (easing)
+    const smoothing = 0.12;
     this.currentY += (this.targetY - this.currentY) * smoothing;
     this.currentX += (this.targetX - this.currentX) * smoothing;
 
@@ -150,46 +108,12 @@ export class HandRotation {
     this.view.group.rotation.x = this.currentX;
   }
 
-  snapToNearest90(): void {
-    if (this.isSnapping) return;
-
-    const snappedY = Math.round(this.currentY / (Math.PI / 2)) * (Math.PI / 2);
-    const snappedX = Math.round(this.currentX / (Math.PI / 2)) * (Math.PI / 2);
-
-    this.animateSnap(this.currentY, snappedY, this.currentX, snappedX, SNAP_ANIMATION_DURATION);
-  }
-
-  private animateSnap(fromY: number, toY: number, fromX: number, toX: number, duration: number): void {
-    this.isSnapping = true;
-    const start = performance.now();
-
-    const tick = (): void => {
-      const t = Math.min(1, (performance.now() - start) / duration);
-      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
-
-      this.currentY = fromY + (toY - fromY) * eased;
-      this.currentX = fromX + (toX - fromX) * eased;
-      this.view.group.rotation.y = this.currentY;
-      this.view.group.rotation.x = this.currentX;
-
-      if (t < 1) {
-        requestAnimationFrame(tick);
-      } else {
-        this.isSnapping = false;
-      }
-    };
-    tick();
-  }
-
   reset(): void {
     this.targetX = 0;
     this.targetY = 0;
     this.currentX = 0;
     this.currentY = 0;
-    this.targetZoom = DEFAULT_ZOOM;
     this.view.group.rotation.x = 0;
     this.view.group.rotation.y = 0;
-    this.swipeStartPos = null;
-    this.lastWristPos = null;
   }
 }
