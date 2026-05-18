@@ -13,6 +13,8 @@ const HAND_CONNECTIONS: [number, number][] = [
 
 export class HandOverlay {
   private ctx: CanvasRenderingContext2D;
+  private lastWidth = 0;
+  private lastHeight = 0;
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!;
@@ -26,8 +28,14 @@ export class HandOverlay {
   ): void {
     const video = this.canvas.parentElement?.querySelector('video');
     if (video) {
-      this.canvas.width = video.videoWidth || this.canvas.clientWidth;
-      this.canvas.height = video.videoHeight || this.canvas.clientHeight;
+      const newWidth = video.videoWidth || this.canvas.clientWidth;
+      const newHeight = video.videoHeight || this.canvas.clientHeight;
+      if (newWidth !== this.lastWidth || newHeight !== this.lastHeight) {
+        this.canvas.width = newWidth;
+        this.canvas.height = newHeight;
+        this.lastWidth = newWidth;
+        this.lastHeight = newHeight;
+      }
     }
 
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
