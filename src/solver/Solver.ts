@@ -9,6 +9,7 @@ export class Solver {
   private worker: Worker;
   private ready = false;
   private readyPromise: Promise<void>;
+  private workerGeneration = 0;
 
   constructor() {
     this.worker = this.createWorker();
@@ -51,12 +52,12 @@ export class Solver {
     });
   }
 
-  private restartWorker(failedWorker: Worker): void {
+  private restartWorker(failedWorker: Worker, generation: number): void {
+    if (this.workerGeneration !== generation) return;
     failedWorker.terminate();
-    if (this.worker === failedWorker) {
-      this.worker = this.createWorker();
-      this.readyPromise = this.initWorker();
-    }
+    this.workerGeneration++;
+    this.worker = this.createWorker();
+    this.readyPromise = this.initWorker();
   }
 
   whenReady(): Promise<void> {
@@ -71,6 +72,7 @@ export class Solver {
     await this.readyPromise;
     bus.emit('solver:solving', undefined);
     const worker = this.worker;
+    const generation = this.workerGeneration;
 
     return new Promise((resolve, reject) => {
       let settled = false;
@@ -84,13 +86,13 @@ export class Solver {
         worker.removeEventListener('error', onError);
       };
 
-      const fail = (message: string, restartWorker: boolean) => {
+      const fail = (message: string, shouldRestart: boolean) => {
         if (settled) return;
         settled = true;
         cleanup();
         bus.emit('solver:error', { message });
-        if (restartWorker) {
-          this.restartWorker(worker);
+        if (shouldRestart) {
+          this.restartWorker(worker, generation);
         }
         reject(new Error(message));
       };
