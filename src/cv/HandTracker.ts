@@ -5,6 +5,7 @@ export class HandTracker {
   private landmarker: HandLandmarker | null = null;
   private lastTimestamp = 0;
   private initPromise: Promise<void> | null = null;
+  private lastErrorLog = 0;
 
   async init(): Promise<void> {
     if (this.initPromise) return this.initPromise;
@@ -20,6 +21,7 @@ export class HandTracker {
           runningMode: 'VIDEO',
         });
       } catch (err) {
+        this.initPromise = null;
         bus.emit('cv:error', { message: `MediaPipe init: ${(err as Error).message}` });
         throw err;
       }
@@ -38,7 +40,11 @@ export class HandTracker {
     this.lastTimestamp = ts;
     try {
       return this.landmarker.detectForVideo(video, ts);
-    } catch {
+    } catch (err) {
+      if (now - this.lastErrorLog > 5000) {
+        console.warn('[HandTracker] Detection error:', err);
+        this.lastErrorLog = now;
+      }
       return null;
     }
   }
@@ -46,5 +52,6 @@ export class HandTracker {
   dispose(): void {
     this.landmarker?.close();
     this.landmarker = null;
+    this.initPromise = null;
   }
 }

@@ -7,12 +7,11 @@ import type { CubeModel } from '../../cube/CubeModel';
 import type { Move } from '../../types';
 import { expandHalfTurns } from '../../cube/Notation';
 import { bus } from '../../app/events';
+import { GESTURE_CONFIG, type ModeColor } from '../../constants';
 
 export type ControllerState = 'IDLE' | 'ROTATION' | 'MANIPULATION' | 'SOLVER_CHARGING' | 'SOLVING';
 
-export type ModeColor = 'white' | 'blue' | 'green' | 'purple';
-
-const SOLVER_CHARGE_TIME = 1500; // 1.5 seconds
+export type { ModeColor };
 
 export class TwoHandController {
   private state: ControllerState = 'IDLE';
@@ -174,7 +173,7 @@ export class TwoHandController {
     }
 
     const elapsed = performance.now() - (this.solverChargeStart ?? 0);
-    if (elapsed >= SOLVER_CHARGE_TIME) {
+    if (elapsed >= GESTURE_CONFIG.SOLVER_CHARGE_TIME_MS) {
       this.triggerSolver();
     }
   }
@@ -182,6 +181,12 @@ export class TwoHandController {
   private async triggerSolver(): Promise<void> {
     this.state = 'SOLVING';
     this.solverChargeStart = null;
+
+    if (this.engine.isBusy()) {
+      bus.emit('toast', { message: 'Espera a que termine la animación...', kind: 'warn' });
+      this.state = 'IDLE';
+      return;
+    }
 
     if (!this.solver.isReady()) {
       bus.emit('toast', { message: 'Solver cargando, espera unos segundos...', kind: 'warn' });
@@ -218,7 +223,7 @@ export class TwoHandController {
       return 0;
     }
     const elapsed = performance.now() - this.solverChargeStart;
-    return Math.min(1, elapsed / SOLVER_CHARGE_TIME);
+    return Math.min(1, elapsed / GESTURE_CONFIG.SOLVER_CHARGE_TIME_MS);
   }
 
   getModeColor(): ModeColor {

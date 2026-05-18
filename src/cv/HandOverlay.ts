@@ -1,5 +1,5 @@
 import type { Landmark } from './gestures/types';
-import type { ModeColor } from './gestures/TwoHandController';
+import { MODE_COLORS, type ModeColor } from '../constants';
 
 // MediaPipe hand connections for drawing skeleton
 const HAND_CONNECTIONS: [number, number][] = [
@@ -10,13 +10,6 @@ const HAND_CONNECTIONS: [number, number][] = [
   [0, 17], [17, 18], [18, 19], [19, 20], // pinky
   [5, 9], [9, 13], [13, 17],            // palm
 ];
-
-const MODE_COLORS: Record<ModeColor, string> = {
-  white: '#ffffff',
-  blue: '#3b82f6',
-  green: '#22c55e',
-  purple: '#a855f7',
-};
 
 export class HandOverlay {
   private ctx: CanvasRenderingContext2D;

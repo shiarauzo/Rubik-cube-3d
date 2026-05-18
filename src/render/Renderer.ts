@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 export class Renderer {
   readonly gl: THREE.WebGLRenderer;
+  private resizeHandler: () => void;
 
   constructor(canvas: HTMLCanvasElement) {
     this.gl = new THREE.WebGLRenderer({
@@ -16,7 +17,8 @@ export class Renderer {
     this.gl.toneMappingExposure = 1.05;
     this.gl.setClearColor(0x000000, 0);
     this.resize();
-    window.addEventListener('resize', () => this.resize());
+    this.resizeHandler = () => this.resize();
+    window.addEventListener('resize', this.resizeHandler);
   }
 
   resize(): void {
@@ -31,5 +33,10 @@ export class Renderer {
 
   get aspect(): number {
     return window.innerWidth / window.innerHeight;
+  }
+
+  dispose(): void {
+    window.removeEventListener('resize', this.resizeHandler);
+    this.gl.dispose();
   }
 }

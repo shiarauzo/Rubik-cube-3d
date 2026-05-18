@@ -42,8 +42,11 @@ export class App {
   private contactShadow: THREE.Mesh | null = null;
 
   private mode: Mode = 'mouse';
+  private modeTransitioning = false;
+  private lastDetectionTime = 0;
   private cvFrame = 0;
   private pivot: THREE.Group;
+  private resizeHandler: () => void;
 
   constructor() {
     const canvas = document.getElementById('three-canvas') as HTMLCanvasElement;
@@ -98,10 +101,19 @@ export class App {
 
     this.bindKeys();
 
-    window.addEventListener('resize', () => {
+    this.resizeHandler = () => {
       this.camera.aspect = this.renderer.aspect;
       this.camera.updateProjectionMatrix();
-    });
+    };
+    window.addEventListener('resize', this.resizeHandler);
+  }
+
+  dispose(): void {
+    window.removeEventListener('resize', this.resizeHandler);
+    this.renderer.dispose();
+    this.solver.dispose();
+    this.handTracker.dispose();
+    this.webcam.stop();
   }
 
   start(): void {
@@ -117,11 +129,13 @@ export class App {
     }
 
     if (this.mode === 'ar' && this.webcam.isOn() && this.handTracker.isReady()) {
+      const now = performance.now();
       this.cvFrame += 1;
-      // Throttle hand detection to ~30 Hz on 60 fps render.
-      if (this.cvFrame % 2 === 0) {
-        const result = this.handTracker.detect(this.webcam.video, performance.now());
-        if (this.cvFrame % 60 === 0) {
+      // Throttle hand detection to ~30 Hz (33ms) regardless of display refresh rate
+      if (now - this.lastDetectionTime > 33) {
+        this.lastDetectionTime = now;
+        const result = this.handTracker.detect(this.webcam.video, now);
+        if (import.meta.env.DEV && this.cvFrame % 60 === 0) {
           console.log('[AR] Detection result:', result?.landmarks?.length ?? 0, 'hands');
         }
         if (result) {
@@ -229,51 +243,58 @@ export class App {
   }
 
   private async setMode(mode: Mode): Promise<void> {
-    if (this.mode === mode) return;
-    const prevMode = this.mode;
-    this.mode = mode;
-    this.hud.setMode(mode);
-    const cvLayer = document.getElementById('cv-layer')!;
-    cvLayer.classList.toggle('active', mode === 'ar');
-    cvLayer.classList.toggle('ar-mode', mode === 'ar');
-    bus.emit('mode:changed', { mode });
+    if (this.mode === mode || this.modeTransitioning) return;
+    this.modeTransitioning = true;
 
-    // Handle AR mode specifics
-    if (mode === 'ar') {
-      // Hide contact shadow in AR mode
-      if (this.contactShadow) this.contactShadow.visible = false;
-      // Disable orbit controls
-      this.orbit.enabled = false;
-      // Activate grid overlay for layer selection
-      this.gridManipulation.setActive(true);
-    } else if (prevMode === 'ar') {
-      // Restore from AR mode
-      if (this.contactShadow) this.contactShadow.visible = true;
-      this.orbit.enabled = true;
-      // Deactivate grid overlay
-      this.gridManipulation.setActive(false);
-    }
+    try {
+      const prevMode = this.mode;
+      this.mode = mode;
+      this.hud.setMode(mode);
+      const cvLayer = document.getElementById('cv-layer')!;
+      cvLayer.classList.toggle('active', mode === 'ar');
+      cvLayer.classList.toggle('ar-mode', mode === 'ar');
+      bus.emit('mode:changed', { mode });
 
-    if (mode === 'mouse') {
-      return;
-    }
+      // Handle AR mode specifics
+      if (mode === 'ar') {
+        // Hide contact shadow in AR mode
+        if (this.contactShadow) this.contactShadow.visible = false;
+        // Disable orbit controls
+        this.orbit.enabled = false;
+        // Activate grid overlay for layer selection
+        this.gridManipulation.setActive(true);
+      } else if (prevMode === 'ar') {
+        // Restore from AR mode
+        if (this.contactShadow) this.contactShadow.visible = true;
+        this.orbit.enabled = true;
+        // Deactivate grid overlay
+        this.gridManipulation.setActive(false);
+      }
 
-    if (!this.webcam.isOn()) {
-      try {
-        await this.webcam.start();
-      } catch {
+      if (mode === 'mouse') {
         return;
       }
-    }
 
-    if (mode === 'ar') {
-      try {
-        console.log('[AR] Initializing hand tracker...');
-        await this.handTracker.init();
-        console.log('[AR] Hand tracker ready:', this.handTracker.isReady());
-      } catch (e) {
-        console.error('[AR] Hand tracker init failed:', e);
+      if (!this.webcam.isOn()) {
+        try {
+          await this.webcam.start();
+        } catch (err) {
+          console.error('[App] Failed to start webcam:', err);
+          return;
+        }
       }
+
+      if (mode === 'ar') {
+        try {
+          if (import.meta.env.DEV) console.log('[AR] Initializing hand tracker...');
+          await this.handTracker.init();
+          if (import.meta.env.DEV) console.log('[AR] Hand tracker ready:', this.handTracker.isReady());
+        } catch (e) {
+          console.error('[AR] Hand tracker init failed:', e);
+        }
+      }
+    } finally {
+      this.modeTransitioning = false;
     }
   }
 

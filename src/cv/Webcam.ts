@@ -39,6 +39,7 @@ export class Webcam {
     this.stream.getTracks().forEach((t) => t.stop());
     this.stream = null;
     this.video.srcObject = null;
+    this.readyPromise = null;
     bus.emit('cv:camera-off', undefined);
   }
 

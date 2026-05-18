@@ -187,18 +187,18 @@ html, body {
 }
 
 .grid-cell.highlight-row {
-  background: rgba(100, 200, 255, 0.15);
-  border-color: rgba(100, 200, 255, 0.5);
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.5);
 }
 
 .grid-cell.highlight-col {
-  background: rgba(255, 180, 100, 0.15);
-  border-color: rgba(255, 180, 100, 0.5);
+  background: rgba(249, 115, 22, 0.15);
+  border-color: rgba(249, 115, 22, 0.5);
 }
 
 .grid-cell.pinch-active {
-  background: rgba(120, 255, 150, 0.2);
-  border-color: rgba(120, 255, 150, 0.6);
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.6);
   transform: scale(0.95);
 }
 
@@ -285,6 +285,13 @@ html, body {
   opacity: 0.4;
   cursor: not-allowed;
 }
+.hud-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.hud-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
 .hud-btn.primary {
   background: var(--accent);
   color: #fafaf7;
@@ -327,6 +334,10 @@ html, body {
 }
 .hud-mode button:hover:not(.active) {
   color: var(--ink);
+}
+.hud-mode button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Side panels (scan + gestures) ------------------------------------------- */

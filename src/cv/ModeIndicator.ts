@@ -1,11 +1,5 @@
-import type { ModeColor, ControllerState } from './gestures/TwoHandController';
-
-const COLOR_MAP: Record<ModeColor, string> = {
-  white: '#ffffff',
-  blue: '#3b82f6',
-  green: '#22c55e',
-  purple: '#a855f7',
-};
+import type { ControllerState } from './gestures/TwoHandController';
+import { MODE_COLORS, type ModeColor } from '../constants';
 
 export class ModeIndicator {
   private container: HTMLDivElement;
@@ -39,7 +33,7 @@ export class ModeIndicator {
     if (!isActive) return;
 
     this.label.textContent = label;
-    this.container.style.setProperty('--mode-color', COLOR_MAP[color]);
+    this.container.style.setProperty('--mode-color', MODE_COLORS[color]);
 
     // Show/hide progress ring for solver charging
     const showProgress = state === 'SOLVER_CHARGING';

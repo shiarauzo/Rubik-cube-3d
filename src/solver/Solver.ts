@@ -55,4 +55,9 @@ export class Solver {
       this.worker.postMessage({ type: 'solve', facelets });
     });
   }
+
+  dispose(): void {
+    this.worker.terminate();
+    this.ready = false;
+  }
 }
