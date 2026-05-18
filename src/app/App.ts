@@ -16,6 +16,7 @@ import { GridManipulation } from '../cv/gestures/GridManipulation';
 import { TwoHandController } from '../cv/gestures/TwoHandController';
 import { HandOverlay } from '../cv/HandOverlay';
 import { ModeIndicator } from '../cv/ModeIndicator';
+import { CameraPermissionModal, type CameraErrorReason } from '../cv/CameraPermissionModal';
 import { bus } from './events';
 import type { Mode, Move } from '../types';
 import { expandHalfTurns } from '../cube/Notation';
@@ -39,6 +40,7 @@ export class App {
   private twoHandController: TwoHandController;
   private handOverlay: HandOverlay;
   private modeIndicator: ModeIndicator;
+  private cameraModal: CameraPermissionModal;
   private contactShadow: THREE.Mesh | null = null;
 
   private mode: Mode = 'mouse';
@@ -91,6 +93,7 @@ export class App {
     );
     this.handOverlay = new HandOverlay(overlay);
     this.modeIndicator = new ModeIndicator(document.getElementById('cv-layer')!);
+    this.cameraModal = new CameraPermissionModal();
 
     // Find contact shadow in scene for AR mode visibility toggle
     this.scene.traverse((obj) => {
@@ -280,6 +283,22 @@ export class App {
           await this.webcam.start();
         } catch (err) {
           console.error('[App] Failed to start webcam:', err);
+          const e = err as DOMException;
+          let reason: CameraErrorReason = 'unknown';
+          if (e.name === 'NotAllowedError') reason = 'denied';
+          else if (e.name === 'NotFoundError') reason = 'not-found';
+
+          // Revert to mouse mode
+          this.mode = 'mouse';
+          this.hud.setMode('mouse');
+          const cvLayer = document.getElementById('cv-layer')!;
+          cvLayer.classList.remove('active', 'ar-mode');
+          if (this.contactShadow) this.contactShadow.visible = true;
+          this.orbit.enabled = true;
+          this.gridManipulation.setActive(false);
+
+          // Show modal with retry option
+          this.cameraModal.show(reason, () => this.setMode('ar'));
           return;
         }
       }

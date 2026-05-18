@@ -18,6 +18,8 @@ export class Hud {
   private cameraBtn: HTMLButtonElement;
   private solveBtn: HTMLButtonElement;
   private scrambleBtn: HTMLButtonElement;
+  private keyboardHelpBtn: HTMLButtonElement;
+  private keyboardModal: HTMLDivElement | null = null;
   private arHint: HTMLDivElement;
   private toastEl: HTMLDivElement;
   private toastTimeout: number | null = null;
@@ -26,16 +28,23 @@ export class Hud {
     const bar = document.createElement('div');
     bar.className = 'hud-bar';
     bar.innerHTML = `
-      <div class="hud-stat"><span class="hud-label">Tiempo</span><span class="hud-value" id="hud-time">0:00.00</span></div>
-      <div class="hud-stat"><span class="hud-label">Mov.</span><span class="hud-value" id="hud-moves">0</span></div>
-      <button class="hud-btn" id="hud-scramble">Mezclar</button>
-      <button class="hud-btn" id="hud-reset">Reset</button>
-      <button class="hud-btn primary" id="hud-solve">Resolver</button>
-      <div class="hud-mode" id="hud-mode">
-        <button data-mode="mouse" class="active">Ratón</button>
-        <button data-mode="ar">AR</button>
+      <div class="hud-stat" aria-label="Tiempo transcurrido">
+        <span class="hud-label" id="time-label">Tiempo</span>
+        <span class="hud-value" id="hud-time" role="timer" aria-labelledby="time-label" aria-live="off">0:00.00</span>
       </div>
-      <button class="hud-btn" id="hud-camera">Cámara on</button>
+      <div class="hud-stat" aria-label="Contador de movimientos">
+        <span class="hud-label" id="moves-label">Mov.</span>
+        <span class="hud-value" id="hud-moves" aria-labelledby="moves-label" aria-live="polite" aria-atomic="true">0</span>
+      </div>
+      <button class="hud-btn" id="hud-scramble" aria-label="Mezclar el cubo de Rubik">Mezclar</button>
+      <button class="hud-btn" id="hud-reset" aria-label="Reiniciar el cubo">Reset</button>
+      <button class="hud-btn primary" id="hud-solve" aria-label="Resolver automáticamente el cubo">Resolver</button>
+      <div class="hud-mode" id="hud-mode" role="group" aria-label="Modo de control">
+        <button data-mode="mouse" class="active" aria-pressed="true" aria-label="Modo ratón - controlar con mouse">Ratón</button>
+        <button data-mode="ar" aria-pressed="false" aria-label="Modo AR - controlar con gestos de mano">AR</button>
+      </div>
+      <button class="hud-btn" id="hud-camera" aria-label="Encender cámara">Cámara on</button>
+      <button class="hud-btn" id="hud-keyboard-help" aria-label="Mostrar atajos de teclado" title="Atajos de teclado">⌨</button>
     `;
     root.appendChild(bar);
 
@@ -61,6 +70,9 @@ export class Hud {
 
     this.cameraBtn = bar.querySelector<HTMLButtonElement>('#hud-camera')!;
     this.cameraBtn.addEventListener('click', handlers.onCameraToggle);
+
+    this.keyboardHelpBtn = bar.querySelector<HTMLButtonElement>('#hud-keyboard-help')!;
+    this.keyboardHelpBtn.addEventListener('click', () => this.toggleKeyboardHelp());
 
     this.arHint = document.createElement('div');
     this.arHint.id = 'gesture-hint';
@@ -124,15 +136,23 @@ export class Hud {
       this.toast(`Solver: ${message}`, 'error');
     });
     bus.on('cv:error', ({ message }) => this.toast(`CV: ${message}`, 'error'));
-    bus.on('cv:camera-on', () => (this.cameraBtn.textContent = 'Cámara off'));
-    bus.on('cv:camera-off', () => (this.cameraBtn.textContent = 'Cámara on'));
+    bus.on('cv:camera-on', () => {
+      this.cameraBtn.textContent = 'Cámara off';
+      this.cameraBtn.setAttribute('aria-label', 'Apagar cámara');
+    });
+    bus.on('cv:camera-off', () => {
+      this.cameraBtn.textContent = 'Cámara on';
+      this.cameraBtn.setAttribute('aria-label', 'Encender cámara');
+    });
     bus.on('toast', ({ message, kind }) => this.toast(message, kind ?? 'info'));
   }
 
   setMode(m: Mode): void {
     for (const k of Object.keys(this.modeButtons) as Mode[]) {
       if (this.modeButtons[k]) {
-        this.modeButtons[k].classList.toggle('active', k === m);
+        const isActive = k === m;
+        this.modeButtons[k].classList.toggle('active', isActive);
+        this.modeButtons[k].setAttribute('aria-pressed', String(isActive));
       }
     }
     this.arHint.classList.toggle('active', m === 'ar');
@@ -145,5 +165,49 @@ export class Hud {
     this.toastTimeout = window.setTimeout(() => {
       this.toastEl.className = '';
     }, 2400);
+  }
+
+  private toggleKeyboardHelp(): void {
+    if (this.keyboardModal) {
+      this.keyboardModal.remove();
+      this.keyboardModal = null;
+      return;
+    }
+
+    this.keyboardModal = document.createElement('div');
+    this.keyboardModal.className = 'keyboard-modal';
+    this.keyboardModal.setAttribute('role', 'dialog');
+    this.keyboardModal.setAttribute('aria-labelledby', 'keyboard-modal-title');
+    this.keyboardModal.setAttribute('aria-modal', 'true');
+    this.keyboardModal.innerHTML = `
+      <div class="keyboard-modal-content">
+        <h3 id="keyboard-modal-title">Atajos de Teclado</h3>
+        <div class="keyboard-shortcuts">
+          <div class="shortcut"><kbd>R</kbd> / <kbd>Shift+R</kbd><span>Cara derecha (R / R')</span></div>
+          <div class="shortcut"><kbd>U</kbd> / <kbd>Shift+U</kbd><span>Cara superior (U / U')</span></div>
+          <div class="shortcut"><kbd>F</kbd> / <kbd>Shift+F</kbd><span>Cara frontal (F / F')</span></div>
+          <div class="shortcut"><kbd>L</kbd> / <kbd>Shift+L</kbd><span>Cara izquierda (L / L')</span></div>
+          <div class="shortcut"><kbd>D</kbd> / <kbd>Shift+D</kbd><span>Cara inferior (D / D')</span></div>
+          <div class="shortcut"><kbd>B</kbd> / <kbd>Shift+B</kbd><span>Cara trasera (B / B')</span></div>
+        </div>
+        <button class="hud-btn keyboard-modal-close" aria-label="Cerrar modal de atajos">Cerrar</button>
+      </div>
+    `;
+    document.getElementById('hud-root')!.appendChild(this.keyboardModal);
+
+    const closeBtn = this.keyboardModal.querySelector('.keyboard-modal-close')!;
+    closeBtn.addEventListener('click', () => this.toggleKeyboardHelp());
+
+    // Close on Escape key
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && this.keyboardModal) {
+        this.toggleKeyboardHelp();
+        window.removeEventListener('keydown', onEscape);
+      }
+    };
+    window.addEventListener('keydown', onEscape);
+
+    // Focus the close button for accessibility
+    (closeBtn as HTMLButtonElement).focus();
   }
 }

@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#f5f4ee" />
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'wasm-unsafe-eval';
+      worker-src 'self' blob:;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com;
+      img-src 'self' data: blob:;
+      connect-src 'self' https://cdn.jsdelivr.net;
+      media-src 'self' blob:;
+    " />
     <title>Rubik 3D · Computer Vision</title>
     <link rel="icon" href="data:," />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -16,8 +26,8 @@
   </head>
   <body>
     <div id="app">
-      <canvas id="three-canvas"></canvas>
-      <div id="cv-layer">
+      <canvas id="three-canvas" aria-label="Vista 3D interactiva del cubo de Rubik. Usa el ratón para rotar la vista o el teclado para mover las capas."></canvas>
+      <div id="cv-layer" aria-label="Vista de cámara para modo AR">
         <video id="cv-video" playsinline muted></video>
         <canvas id="cv-overlay"></canvas>
         <div id="grid-overlay">
@@ -33,7 +43,7 @@
         </div>
       </div>
       <div id="hud-root"></div>
-      <div id="toast"></div>
+      <div id="toast" role="alert" aria-live="polite" aria-atomic="true"></div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

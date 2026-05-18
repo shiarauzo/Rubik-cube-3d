@@ -55,8 +55,7 @@ html, body {
 
 #cv-layer {
   position: absolute;
-  right: 16px;
-  bottom: 16px;
+  /* right and bottom are set in safe-area section */
   width: 300px;
   max-width: 36vw;
   aspect-ratio: 4 / 3;
@@ -213,7 +212,6 @@ html, body {
 
 .hud-bar {
   position: absolute;
-  top: 14px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -230,6 +228,7 @@ html, body {
   flex-wrap: wrap;
   max-width: calc(100vw - 24px);
   justify-content: center;
+  /* top is set in safe-area section */
 }
 
 .hud-stat {
@@ -345,8 +344,7 @@ html, body {
 #scan-panel,
 #gesture-hint {
   position: absolute;
-  left: 14px;
-  bottom: 14px;
+  /* left and bottom are set in safe-area section */
   background: var(--glass);
   -webkit-backdrop-filter: blur(22px) saturate(1.5);
   backdrop-filter: blur(22px) saturate(1.5);
@@ -444,15 +442,260 @@ html, body {
 #toast.warn { color: var(--warn); }
 #toast.error { color: var(--error); }
 
+/* Safe area support (iPhone notch, etc.) ---------------------------------- */
+
+.hud-bar {
+  top: max(14px, env(safe-area-inset-top, 14px));
+  padding-left: max(8px, env(safe-area-inset-left, 8px));
+  padding-right: max(8px, env(safe-area-inset-right, 8px));
+}
+
+#scan-panel,
+#gesture-hint {
+  left: max(14px, env(safe-area-inset-left, 14px));
+  bottom: max(14px, env(safe-area-inset-bottom, 14px));
+}
+
+#cv-layer {
+  right: max(16px, env(safe-area-inset-right, 16px));
+  bottom: max(16px, env(safe-area-inset-bottom, 16px));
+}
+
 /* Mobile ------------------------------------------------------------------ */
 
 @media (max-width: 600px) {
-  .hud-bar { gap: 4px; padding: 6px; top: 8px; }
-  .hud-stat { padding: 2px 8px; min-width: 0; }
-  .hud-btn { padding: 6px 10px; font-size: 12px; }
-  .hud-mode button { padding: 5px 9px; font-size: 11px; }
-  #cv-layer { width: 60vw; bottom: 12px; right: 12px; }
-  #scan-panel, #gesture-hint { left: 8px; right: 8px; bottom: 8px; max-width: none; }
+  .hud-bar {
+    gap: 6px;
+    padding: 6px;
+    padding-top: max(6px, env(safe-area-inset-top, 6px));
+    top: 8px;
+    flex-wrap: wrap;
+  }
+
+  .hud-stat {
+    padding: 4px 8px;
+    min-width: 0;
+  }
+
+  /* Minimum 44x44px touch targets per iOS guidelines */
+  .hud-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 10px 14px;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hud-mode button {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  #cv-layer {
+    width: 55vw;
+    max-width: 220px;
+    bottom: max(12px, env(safe-area-inset-bottom, 12px));
+    right: max(12px, env(safe-area-inset-right, 12px));
+  }
+
+  #scan-panel,
+  #gesture-hint {
+    left: max(8px, env(safe-area-inset-left, 8px));
+    right: max(8px, env(safe-area-inset-right, 8px));
+    bottom: max(8px, env(safe-area-inset-bottom, 8px));
+    max-width: none;
+  }
+
+  /* Prevent overlap between cv-layer and gesture hint */
+  #gesture-hint.active + #cv-layer,
+  #cv-layer.active ~ #gesture-hint {
+    max-width: 45vw;
+  }
+}
+
+/* Tablet ------------------------------------------------------------------ */
+
+@media (min-width: 601px) and (max-width: 1024px) {
+  #cv-layer {
+    width: 280px;
+    max-width: 35vw;
+  }
+
+  .hud-bar {
+    gap: 6px;
+  }
+}
+
+/* Mobile landscape -------------------------------------------------------- */
+
+@media (max-width: 900px) and (orientation: landscape) {
+  .hud-bar {
+    padding-left: max(8px, env(safe-area-inset-left, 8px));
+    padding-right: max(8px, env(safe-area-inset-right, 8px));
+  }
+
+  #cv-layer {
+    width: 35vw;
+    max-width: 280px;
+    right: max(16px, env(safe-area-inset-right, 16px));
+  }
+
+  #gesture-hint {
+    max-width: 280px;
+    left: max(14px, env(safe-area-inset-left, 14px));
+  }
+}
+
+/* Keyboard help modal ------------------------------------------------------ */
+
+.keyboard-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: auto;
+}
+
+.keyboard-modal-content {
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  backdrop-filter: blur(22px) saturate(1.5);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 20px 24px;
+  max-width: 90vw;
+  width: 340px;
+}
+
+.keyboard-modal-content h3 {
+  margin: 0 0 16px 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.keyboard-shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.shortcut {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.shortcut kbd {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  background: var(--glass-strong);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--ink);
+  min-width: 24px;
+  text-align: center;
+}
+
+.shortcut span {
+  flex: 1;
+}
+
+.keyboard-modal-close {
+  width: 100%;
+}
+
+/* Camera permission modal -------------------------------------------------- */
+
+.camera-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: auto;
+}
+
+.camera-modal-content {
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  backdrop-filter: blur(22px) saturate(1.5);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 24px;
+  max-width: 90vw;
+  width: 380px;
+  text-align: center;
+}
+
+.camera-modal-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  color: var(--error);
+}
+
+.camera-modal-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.camera-modal-content h3 {
+  margin: 0 0 8px 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.camera-modal-content p {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.camera-modal-instructions {
+  background: rgba(20, 22, 30, 0.04);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.6;
+  text-align: left;
+}
+
+.camera-modal-instructions kbd {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 14px;
+}
+
+.camera-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.camera-modal-actions .hud-btn {
+  flex: 1;
+  max-width: 140px;
 }
 
 @media (prefers-reduced-motion: reduce) {
