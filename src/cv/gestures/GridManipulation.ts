@@ -1,4 +1,4 @@
-import type { Face, Move } from '../../types';
+import type { Face, Move, Slice } from '../../types';
 import type { CubeView } from '../../cube/CubeView';
 import type { MoveEngine } from '../../cube/MoveEngine';
 import type { HandShape, Handedness, Landmark } from './types';
@@ -20,18 +20,18 @@ interface GrabState {
   direction: 'horizontal' | 'vertical' | null;
 }
 
-// Map grid position to cube face
+// Map grid position to cube face or slice
 // Rows: 0=U layer, 1=E (equator), 2=D layer
 // Cols: 0=L layer, 1=M (middle), 2=R layer
-const ROW_TO_FACE: Record<number, Face | null> = {
+const ROW_TO_LAYER: Record<number, Face | Slice> = {
   0: 'U',
-  1: null, // E slice - not standard face
+  1: 'E', // Equator slice
   2: 'D',
 };
 
-const COL_TO_FACE: Record<number, Face | null> = {
+const COL_TO_LAYER: Record<number, Face | Slice> = {
   0: 'L',
-  1: null, // M slice - not standard face
+  1: 'M', // Middle slice
   2: 'R',
 };
 
@@ -49,6 +49,8 @@ const MOVE_HINTS: Record<string, { arrow: string; move: string }[]> = {
   '0-1': [
     { arrow: '←', move: 'U' },
     { arrow: '→', move: "U'" },
+    { arrow: '↑', move: "M'" },
+    { arrow: '↓', move: 'M' },
   ],
   '0-2': [
     { arrow: '←', move: 'U' },
@@ -56,13 +58,22 @@ const MOVE_HINTS: Record<string, { arrow: string; move: string }[]> = {
     { arrow: '↑', move: "R'" },
     { arrow: '↓', move: 'R' },
   ],
-  // Row 1 (middle - L/R only)
+  // Row 1 (E - equator slice)
   '1-0': [
+    { arrow: '←', move: "E'" },
+    { arrow: '→', move: 'E' },
     { arrow: '↑', move: 'L' },
     { arrow: '↓', move: "L'" },
   ],
-  '1-1': [], // Center - no moves
+  '1-1': [
+    { arrow: '←', move: "E'" },
+    { arrow: '→', move: 'E' },
+    { arrow: '↑', move: "M'" },
+    { arrow: '↓', move: 'M' },
+  ],
   '1-2': [
+    { arrow: '←', move: "E'" },
+    { arrow: '→', move: 'E' },
     { arrow: '↑', move: "R'" },
     { arrow: '↓', move: 'R' },
   ],
@@ -76,6 +87,8 @@ const MOVE_HINTS: Record<string, { arrow: string; move: string }[]> = {
   '2-1': [
     { arrow: '←', move: "D'" },
     { arrow: '→', move: 'D' },
+    { arrow: '↑', move: "M'" },
+    { arrow: '↓', move: 'M' },
   ],
   '2-2': [
     { arrow: '←', move: "D'" },
@@ -254,8 +267,8 @@ export class GridManipulation {
         if (el) el.classList.add('highlight-row');
       }
       // Highlight 3D cube layer
-      const face = ROW_TO_FACE[cell.row];
-      if (face) this.view.highlightLayer(face);
+      const layer = ROW_TO_LAYER[cell.row];
+      this.view.highlightLayer(layer);
     } else if (direction === 'vertical') {
       // Highlight the column
       for (let r = 0; r < 3; r++) {
@@ -263,8 +276,8 @@ export class GridManipulation {
         if (el) el.classList.add('highlight-col');
       }
       // Highlight 3D cube layer
-      const face = COL_TO_FACE[cell.col];
-      if (face) this.view.highlightLayer(face);
+      const layer = COL_TO_LAYER[cell.col];
+      this.view.highlightLayer(layer);
     }
   }
 
@@ -343,23 +356,33 @@ export class GridManipulation {
     const dy = lastY - startY;
 
     if (direction === 'horizontal') {
-      const face = ROW_TO_FACE[cell.row];
-      if (!face) return null;
+      const layer = ROW_TO_LAYER[cell.row];
       // Video is mirrored, so raw dx < 0 means visual drag to the right
       const rightDrag = dx < 0;
-      if (face === 'U') {
+
+      // U: right = U', left = U
+      // E: right = E, left = E' (E follows D direction)
+      // D: right = D, left = D'
+      if (layer === 'U') {
         return { move: rightDrag ? "U'" : 'U', direction: rightDrag ? 'right' : 'left' };
-      } else if (face === 'D') {
+      } else if (layer === 'E') {
+        return { move: rightDrag ? 'E' : "E'", direction: rightDrag ? 'right' : 'left' };
+      } else if (layer === 'D') {
         return { move: rightDrag ? 'D' : "D'", direction: rightDrag ? 'right' : 'left' };
       }
     } else if (direction === 'vertical') {
-      const face = COL_TO_FACE[cell.col];
-      if (!face) return null;
+      const layer = COL_TO_LAYER[cell.col];
       const downDrag = dy > 0;
-      if (face === 'R') {
-        return { move: downDrag ? 'R' : "R'", direction: downDrag ? 'down' : 'up' };
-      } else if (face === 'L') {
+
+      // L: down = L', up = L
+      // M: down = M, up = M' (M follows L direction)
+      // R: down = R, up = R'
+      if (layer === 'L') {
         return { move: downDrag ? "L'" : 'L', direction: downDrag ? 'down' : 'up' };
+      } else if (layer === 'M') {
+        return { move: downDrag ? 'M' : "M'", direction: downDrag ? 'down' : 'up' };
+      } else if (layer === 'R') {
+        return { move: downDrag ? 'R' : "R'", direction: downDrag ? 'down' : 'up' };
       }
     }
 

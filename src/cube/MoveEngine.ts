@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Face, Move } from '../types';
+import type { Face, Move, Slice } from '../types';
 import { CubeModel } from './CubeModel';
 import { CubeView, type Cubie } from './CubeView';
 import { easeInOutQuart } from '../util/math';
@@ -12,6 +12,13 @@ const FACE_AXIS: Record<Face, THREE.Vector3> = {
   L: new THREE.Vector3(-1, 0, 0),
   F: new THREE.Vector3(0, 0, 1),
   B: new THREE.Vector3(0, 0, -1),
+};
+
+// Slice axes: M follows L, E follows D, S follows F
+const SLICE_AXIS: Record<Slice, THREE.Vector3> = {
+  M: new THREE.Vector3(-1, 0, 0), // Same direction as L
+  E: new THREE.Vector3(0, -1, 0), // Same direction as D
+  S: new THREE.Vector3(0, 0, 1),  // Same direction as F
 };
 
 const ANIM_MS = 240;
@@ -74,18 +81,25 @@ export class MoveEngine {
   }
 
   private async animate(move: Move): Promise<void> {
-    const face = move[0] as Face;
+    const moveChar = move[0] as Face | Slice;
     const suffix = move.slice(1);
     let angle = -Math.PI / 2;
     if (suffix === "'") angle = +Math.PI / 2;
     else if (suffix === '2') angle = -Math.PI;
 
+    // Determine if this is a face move or slice move
+    const isSlice = moveChar === 'M' || moveChar === 'E' || moveChar === 'S';
+
     // Sign correction: angle around face axis (outward) = standard CW for plain face.
     // The rotation in three.js with axis = outward normal and negative angle gives
     // a clockwise rotation when viewed from outside that face.
-    const axis = FACE_AXIS[face].clone().normalize();
+    const axis = isSlice
+      ? SLICE_AXIS[moveChar as Slice].clone().normalize()
+      : FACE_AXIS[moveChar as Face].clone().normalize();
 
-    const cubies = this.view.getLayerCubies(face);
+    const cubies = isSlice
+      ? this.view.getSliceCubies(moveChar as Slice)
+      : this.view.getLayerCubies(moveChar as Face);
     // Reparent layer cubies to the pivot.
     for (const c of cubies) this.pivot.attach(c.mesh);
     this.pivot.quaternion.identity();

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import type { Face, StickerColor } from '../types';
+import type { Face, Slice, StickerColor } from '../types';
 import { COLOR_HEX, FACES } from '../types';
 import { FACELET_MAP, faceletGlobalIndex, type Vec3 } from './FaceletMap';
 
@@ -159,6 +159,18 @@ export class CubeView {
     return out;
   }
 
+  /** Returns cubies in the middle slice (M, E, or S). */
+  getSliceCubies(slice: Slice): Cubie[] {
+    const out: Cubie[] = [];
+    for (const c of this.cubies) {
+      const p = c.mesh.position;
+      // M: x=0, E: y=0, S: z=0
+      const coord = slice === 'M' ? p.x : slice === 'E' ? p.y : p.z;
+      if (Math.abs(coord) < 0.1) out.push(c);
+    }
+    return out;
+  }
+
   getAllCubies(): Cubie[] {
     return this.cubies;
   }
@@ -173,7 +185,7 @@ export class CubeView {
   }
 
   /** Highlight stickers in a layer with a soft glow effect. Pass null to clear. */
-  highlightLayer(face: Face | null): void {
+  highlightLayer(layer: Face | Slice | null): void {
     // Reset all stickers first
     for (const cubie of this.cubies) {
       for (const [, sticker] of cubie.stickers) {
@@ -183,10 +195,13 @@ export class CubeView {
       }
     }
 
-    if (!face) return;
+    if (!layer) return;
 
-    // Get cubies in the selected layer
-    const layerCubies = this.getLayerCubies(face);
+    // Get cubies in the selected layer (face or slice)
+    const isSlice = layer === 'M' || layer === 'E' || layer === 'S';
+    const layerCubies = isSlice
+      ? this.getSliceCubies(layer as Slice)
+      : this.getLayerCubies(layer as Face);
 
     for (const cubie of layerCubies) {
       for (const [, sticker] of cubie.stickers) {
