@@ -31,16 +31,45 @@
         <video id="cv-video" playsinline muted></video>
         <canvas id="cv-overlay"></canvas>
         <div id="grid-overlay">
-          <div class="grid-cell" data-row="0" data-col="0"></div>
-          <div class="grid-cell" data-row="0" data-col="1"></div>
-          <div class="grid-cell" data-row="0" data-col="2"></div>
-          <div class="grid-cell" data-row="1" data-col="0"></div>
-          <div class="grid-cell" data-row="1" data-col="1"></div>
-          <div class="grid-cell" data-row="1" data-col="2"></div>
-          <div class="grid-cell" data-row="2" data-col="0"></div>
-          <div class="grid-cell" data-row="2" data-col="1"></div>
-          <div class="grid-cell" data-row="2" data-col="2"></div>
+          <div class="grid-cell corner" data-row="0" data-col="0">
+            <span class="cell-label">U·L</span>
+            <span class="cell-arrows">←→ ↑↓</span>
+          </div>
+          <div class="grid-cell" data-row="0" data-col="1">
+            <span class="cell-label">U·M</span>
+            <span class="cell-arrows">←→ ↑↓</span>
+          </div>
+          <div class="grid-cell corner" data-row="0" data-col="2">
+            <span class="cell-label">U·R</span>
+            <span class="cell-arrows">←→ ↑↓</span>
+          </div>
+          <div class="grid-cell corner" data-row="1" data-col="0">
+            <span class="cell-label">E·L</span>
+            <span class="cell-arrows">←→ ↑↓</span>
+          </div>
+          <div class="grid-cell corner" data-row="1" data-col="1">
+            <span class="cell-label">E·M</span>
+            <span class="cell-arrows">←→ ↑↓</span>
+          </div>
+          <div class="grid-cell corner" data-row="1" data-col="2">
+            <span class="cell-label">E·R</span>
+            <span class="cell-arrows">←→ ↑↓</span>
+          </div>
+          <div class="grid-cell corner" data-row="2" data-col="0">
+            <span class="cell-label">D·L</span>
+            <span class="cell-arrows">←→ ↑↓</span>
+          </div>
+          <div class="grid-cell" data-row="2" data-col="1">
+            <span class="cell-label">D·M</span>
+            <span class="cell-arrows">←→ ↑↓</span>
+          </div>
+          <div class="grid-cell corner" data-row="2" data-col="2">
+            <span class="cell-label">D·R</span>
+            <span class="cell-arrows">←→ ↑↓</span>
+          </div>
         </div>
+        <div id="move-hint" class="move-hint"></div>
+        <div id="drag-preview" class="drag-preview"></div>
       </div>
       <div id="hud-root"></div>
       <div id="toast" role="alert" aria-live="polite" aria-atomic="true"></div>

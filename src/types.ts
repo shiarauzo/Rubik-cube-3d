@@ -1,8 +1,12 @@
 export type Face = 'U' | 'R' | 'F' | 'D' | 'L' | 'B';
 export const FACES: Face[] = ['U', 'R', 'F', 'D', 'L', 'B'];
 
+// Slice moves for middle layers
+export type Slice = 'M' | 'E' | 'S';
+export const SLICES: Slice[] = ['M', 'E', 'S'];
+
 export type Suffix = '' | "'" | '2';
-export type Move = `${Face}${Suffix}`;
+export type Move = `${Face}${Suffix}` | `${Slice}${Suffix}`;
 
 export type StickerColor = 'W' | 'Y' | 'R' | 'O' | 'G' | 'B';
 
