@@ -16,6 +16,8 @@ export type { ModeColor };
 export class TwoHandController {
   private state: ControllerState = 'IDLE';
   private solverChargeStart: number | null = null;
+  private lastResetTime = 0;
+  private static RESET_COOLDOWN_MS = 1500; // Prevent spam
 
   constructor(
     private handRotation: HandRotation,
@@ -63,12 +65,27 @@ export class TwoHandController {
     return left?.shape === 'fist' && right?.shape === 'fist';
   }
 
+  private checkBothThumbsUp(left?: HandShape, right?: HandShape): boolean {
+    return left?.shape === 'thumbUp' && right?.shape === 'thumbUp';
+  }
+
   private handleIdle(
     leftHand: HandShape | undefined,
     rightHand: HandShape | undefined,
     bothFists: boolean,
     landmarks: Map<Handedness, Landmark[]>,
   ): void {
+    // Check for reset gesture (both thumbs up) with cooldown
+    const now = performance.now();
+    if (this.checkBothThumbsUp(leftHand, rightHand)) {
+      if (now - this.lastResetTime > TwoHandController.RESET_COOLDOWN_MS) {
+        this.handRotation.reset();
+        this.lastResetTime = now;
+        bus.emit('toast', { message: '👍 Vista reseteada - Cara frontal: F', kind: 'info' });
+      }
+      return;
+    }
+
     // Priority: solver > manipulation > rotation
     if (bothFists) {
       this.state = 'SOLVER_CHARGING';
@@ -105,6 +122,17 @@ export class TwoHandController {
     bothFists: boolean,
     landmarks: Map<Handedness, Landmark[]>,
   ): void {
+    // Check for reset gesture (both thumbs up)
+    const now = performance.now();
+    if (this.checkBothThumbsUp(leftHand, rightHand)) {
+      if (now - this.lastResetTime > TwoHandController.RESET_COOLDOWN_MS) {
+        this.handRotation.reset();
+        this.lastResetTime = now;
+        bus.emit('toast', { message: '👍 Vista reseteada - Cara frontal: F', kind: 'info' });
+      }
+      return;
+    }
+
     // Check for mode transitions
     if (bothFists) {
       this.state = 'SOLVER_CHARGING';
