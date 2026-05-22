@@ -43,58 +43,58 @@ const MOVE_HINTS: Record<string, { arrow: string; move: string }[]> = {
   '0-0': [
     { arrow: '←', move: 'U' },
     { arrow: '→', move: "U'" },
-    { arrow: '↑', move: 'L' },
-    { arrow: '↓', move: "L'" },
+    { arrow: '↑', move: "L'" },
+    { arrow: '↓', move: 'L' },
   ],
   '0-1': [
     { arrow: '←', move: 'U' },
     { arrow: '→', move: "U'" },
-    { arrow: '↑', move: "M'" },
-    { arrow: '↓', move: 'M' },
+    { arrow: '↑', move: 'M' },
+    { arrow: '↓', move: "M'" },
   ],
   '0-2': [
     { arrow: '←', move: 'U' },
     { arrow: '→', move: "U'" },
-    { arrow: '↑', move: "R'" },
-    { arrow: '↓', move: 'R' },
+    { arrow: '↑', move: 'R' },
+    { arrow: '↓', move: "R'" },
   ],
   // Row 1 (E - equator slice)
   '1-0': [
     { arrow: '←', move: "E'" },
     { arrow: '→', move: 'E' },
-    { arrow: '↑', move: 'L' },
-    { arrow: '↓', move: "L'" },
+    { arrow: '↑', move: "L'" },
+    { arrow: '↓', move: 'L' },
   ],
   '1-1': [
     { arrow: '←', move: "E'" },
     { arrow: '→', move: 'E' },
-    { arrow: '↑', move: "M'" },
-    { arrow: '↓', move: 'M' },
+    { arrow: '↑', move: 'M' },
+    { arrow: '↓', move: "M'" },
   ],
   '1-2': [
     { arrow: '←', move: "E'" },
     { arrow: '→', move: 'E' },
-    { arrow: '↑', move: "R'" },
-    { arrow: '↓', move: 'R' },
+    { arrow: '↑', move: 'R' },
+    { arrow: '↓', move: "R'" },
   ],
   // Row 2 (D layer)
   '2-0': [
     { arrow: '←', move: "D'" },
     { arrow: '→', move: 'D' },
-    { arrow: '↑', move: 'L' },
-    { arrow: '↓', move: "L'" },
+    { arrow: '↑', move: "L'" },
+    { arrow: '↓', move: 'L' },
   ],
   '2-1': [
     { arrow: '←', move: "D'" },
     { arrow: '→', move: 'D' },
-    { arrow: '↑', move: "M'" },
-    { arrow: '↓', move: 'M' },
+    { arrow: '↑', move: 'M' },
+    { arrow: '↓', move: "M'" },
   ],
   '2-2': [
     { arrow: '←', move: "D'" },
     { arrow: '→', move: 'D' },
-    { arrow: '↑', move: "R'" },
-    { arrow: '↓', move: 'R' },
+    { arrow: '↑', move: 'R' },
+    { arrow: '↓', move: "R'" },
   ],
 };
 
@@ -374,15 +374,15 @@ export class GridManipulation {
       const layer = COL_TO_LAYER[cell.col];
       const downDrag = dy > 0;
 
-      // L: down = L', up = L
-      // M: down = M, up = M' (M follows L direction)
-      // R: down = R, up = R'
+      // L: down = L (front goes down), up = L'
+      // M: down = M' (front goes down, M follows R direction), up = M
+      // R: down = R' (front goes down), up = R
       if (layer === 'L') {
-        return { move: downDrag ? "L'" : 'L', direction: downDrag ? 'down' : 'up' };
+        return { move: downDrag ? 'L' : "L'", direction: downDrag ? 'down' : 'up' };
       } else if (layer === 'M') {
-        return { move: downDrag ? 'M' : "M'", direction: downDrag ? 'down' : 'up' };
+        return { move: downDrag ? "M'" : 'M', direction: downDrag ? 'down' : 'up' };
       } else if (layer === 'R') {
-        return { move: downDrag ? 'R' : "R'", direction: downDrag ? 'down' : 'up' };
+        return { move: downDrag ? "R'" : 'R', direction: downDrag ? 'down' : 'up' };
       }
     }
 
