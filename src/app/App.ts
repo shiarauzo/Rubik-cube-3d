@@ -15,7 +15,6 @@ import { HandRotation } from '../cv/gestures/HandRotation';
 import { GridManipulation } from '../cv/gestures/GridManipulation';
 import { TwoHandController } from '../cv/gestures/TwoHandController';
 import { HandOverlay } from '../cv/HandOverlay';
-import { Hand3DRenderer } from '../cv/Hand3DRenderer';
 import { ModeIndicator } from '../cv/ModeIndicator';
 import { CameraPermissionModal, type CameraErrorReason } from '../cv/CameraPermissionModal';
 import { bus } from './events';
@@ -40,7 +39,6 @@ export class App {
   private gridManipulation: GridManipulation;
   private twoHandController: TwoHandController;
   private handOverlay: HandOverlay;
-  private hand3DRenderer: Hand3DRenderer;
   private modeIndicator: ModeIndicator;
   private cameraModal: CameraPermissionModal;
   private contactShadow: THREE.Mesh | null = null;
@@ -94,7 +92,6 @@ export class App {
       this.model,
     );
     this.handOverlay = new HandOverlay(overlay);
-    this.hand3DRenderer = new Hand3DRenderer(this.scene);
     this.modeIndicator = new ModeIndicator(document.getElementById('cv-layer')!);
     this.cameraModal = new CameraPermissionModal();
 
@@ -119,7 +116,6 @@ export class App {
     this.renderer.dispose();
     this.solver.dispose();
     this.handTracker.dispose();
-    this.hand3DRenderer.dispose();
     this.webcam.stop();
   }
 
@@ -168,9 +164,6 @@ export class App {
 
           // Process through TwoHandController (coordinates rotation + manipulation + solver)
           this.twoHandController.processFrame(frame, landmarksMap);
-
-          // Update 3D hand visualization
-          this.hand3DRenderer.update(landmarksMap);
 
           // Get mode state for visual feedback
           const modeColor = this.twoHandController.getModeColor();
