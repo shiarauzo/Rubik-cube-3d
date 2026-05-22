@@ -15,8 +15,3 @@ export const GESTURE_CONFIG = {
   DETECTION_THROTTLE_MS: 33,
 } as const;
 
-/** Animation durations */
-export const ANIM_CONFIG = {
-  MOVE_DURATION_MS: 240,
-  TOAST_DURATION_MS: 2400,
-} as const;

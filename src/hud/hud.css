@@ -485,7 +485,6 @@ html, body {
 
 /* Side panels (scan + gestures) ------------------------------------------- */
 
-#scan-panel,
 #gesture-hint {
   position: absolute;
   /* left and bottom are set in safe-area section */
@@ -505,19 +504,16 @@ html, body {
   z-index: 11;
 }
 
-#scan-panel.active,
 #gesture-hint.active {
   display: block;
 }
 
-#scan-panel h3,
 #gesture-hint h3 {
   margin: 0 0 8px 0;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-#scan-panel p,
 #gesture-hint p {
   margin: 0 0 12px 0;
   color: var(--ink-soft);
@@ -529,34 +525,6 @@ html, body {
   border-radius: 4px;
   font-size: 11px;
   color: var(--ink);
-}
-#scan-panel kbd {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  background: var(--glass-strong);
-  border: 1px solid var(--line);
-  border-bottom-width: 2px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  color: var(--ink);
-}
-#scan-panel .progress {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 10px;
-}
-#scan-panel .progress span {
-  flex: 1;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(20, 22, 30, 0.1);
-  transition: background 0.2s;
-}
-#scan-panel .progress span.done { background: var(--ink); }
-#scan-panel .progress span.current { background: var(--accent); }
-#scan-panel .actions {
-  display: flex;
-  gap: 8px;
 }
 
 /* Toast ------------------------------------------------------------------- */
@@ -594,7 +562,6 @@ html, body {
   padding-right: max(8px, env(safe-area-inset-right, 8px));
 }
 
-#scan-panel,
 #gesture-hint {
   left: max(14px, env(safe-area-inset-left, 14px));
   bottom: max(14px, env(safe-area-inset-bottom, 14px));
@@ -645,7 +612,6 @@ html, body {
     right: max(12px, env(safe-area-inset-right, 12px));
   }
 
-  #scan-panel,
   #gesture-hint {
     left: max(8px, env(safe-area-inset-left, 8px));
     right: max(8px, env(safe-area-inset-right, 8px));
