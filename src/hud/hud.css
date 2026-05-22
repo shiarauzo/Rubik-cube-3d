@@ -79,8 +79,12 @@ html, body {
 #cv-layer.ar-mode {
   right: 16px;
   bottom: 16px;
-  width: 320px;
-  max-width: 40vw;
+  width: auto;
+  max-width: none;
+  aspect-ratio: auto;
+  background: transparent;
+  box-shadow: none;
+  border: none;
 }
 
 #cv-video {
@@ -90,6 +94,7 @@ html, body {
   height: 100%;
   object-fit: cover;
   transform: scaleX(-1);
+  opacity: 0;
 }
 
 #cv-overlay {
@@ -98,6 +103,11 @@ html, body {
   width: 100%;
   height: 100%;
   pointer-events: none;
+}
+
+/* Hide 2D hand overlay in AR mode (3D hands are shown on cube) */
+#cv-layer.ar-mode #cv-overlay {
+  display: none;
 }
 
 /* Mode indicator */
