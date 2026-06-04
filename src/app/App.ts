@@ -12,7 +12,7 @@ import { Webcam } from '../cv/Webcam';
 import { HandTracker } from '../cv/HandTracker';
 import { GestureClassifier } from '../cv/gestures/GestureClassifier';
 import { HandRotation } from '../cv/gestures/HandRotation';
-import { GridManipulation } from '../cv/gestures/GridManipulation';
+import { FaceControl } from '../cv/gestures/FaceControl';
 import { TwoHandController } from '../cv/gestures/TwoHandController';
 import { HandOverlay } from '../cv/HandOverlay';
 import { ModeIndicator } from '../cv/ModeIndicator';
@@ -36,7 +36,7 @@ export class App {
   private handTracker: HandTracker;
   private gestureClassifier: GestureClassifier;
   private handRotation: HandRotation;
-  private gridManipulation: GridManipulation;
+  private faceControl: FaceControl;
   private twoHandController: TwoHandController;
   private handOverlay: HandOverlay;
   private modeIndicator: ModeIndicator;
@@ -83,10 +83,10 @@ export class App {
     this.handTracker = new HandTracker();
     this.gestureClassifier = new GestureClassifier();
     this.handRotation = new HandRotation(this.view);
-    this.gridManipulation = new GridManipulation(this.view, this.engine);
+    this.faceControl = new FaceControl(this.view, this.engine);
     this.twoHandController = new TwoHandController(
       this.handRotation,
-      this.gridManipulation,
+      this.faceControl,
       this.solver,
       this.engine,
       this.model,
@@ -132,6 +132,10 @@ export class App {
     }
 
     if (this.mode === 'ar' && this.webcam.isOn() && this.handTracker.isReady()) {
+      // Ease the whole-cube orientation toward its target every frame so the
+      // mechanical 90° snaps animate smoothly between detection ticks.
+      this.handRotation.update();
+
       const now = performance.now();
       this.cvFrame += 1;
       // Throttle hand detection to ~30 Hz (33ms) regardless of display refresh rate
@@ -264,14 +268,18 @@ export class App {
         if (this.contactShadow) this.contactShadow.visible = false;
         // Disable orbit controls
         this.orbit.enabled = false;
-        // Activate grid overlay for layer selection
-        this.gridManipulation.setActive(true);
+        // Activate the color-based face controls
+        this.faceControl.setActive(true);
+        // Enable gesture-driven cube rotation (left-hand pinch + drag)
+        this.handRotation.setEnabled(true);
       } else if (prevMode === 'ar') {
         // Restore from AR mode
         if (this.contactShadow) this.contactShadow.visible = true;
         this.orbit.enabled = true;
-        // Deactivate grid overlay
-        this.gridManipulation.setActive(false);
+        // Deactivate the face controls
+        this.faceControl.setActive(false);
+        // Stop accepting rotation gestures (keeps current orientation)
+        this.handRotation.setEnabled(false);
       }
 
       if (mode === 'mouse') {
@@ -295,7 +303,8 @@ export class App {
           cvLayer.classList.remove('active', 'ar-mode');
           if (this.contactShadow) this.contactShadow.visible = true;
           this.orbit.enabled = true;
-          this.gridManipulation.setActive(false);
+          this.faceControl.setActive(false);
+          this.handRotation.setEnabled(false);
 
           // Show modal with retry option
           this.cameraModal.show(reason, () => this.setMode('ar'));

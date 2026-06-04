@@ -30,46 +30,32 @@
       <div id="cv-layer" aria-label="Vista de cámara para modo AR">
         <video id="cv-video" playsinline muted></video>
         <canvas id="cv-overlay"></canvas>
-        <div id="grid-overlay">
-          <div class="grid-cell corner" data-row="0" data-col="0">
-            <span class="cell-label">U·L</span>
-            <span class="cell-arrows">←→ ↑↓</span>
+        <div id="face-controls">
+          <div id="color-bar">
+            <button class="color-btn" data-face="R" style="--c: #b91c1c">
+              <span class="color-name">roja</span>
+            </button>
+            <button class="color-btn" data-face="L" style="--c: #c2570c">
+              <span class="color-name">naranja</span>
+            </button>
+            <button class="color-btn" data-face="D" style="--c: #d4a017">
+              <span class="color-name">amarilla</span>
+            </button>
+            <button class="color-btn" data-face="F" style="--c: #4d7c0f">
+              <span class="color-name">verde</span>
+            </button>
+            <button class="color-btn" data-face="B" style="--c: #1e40af">
+              <span class="color-name">azul</span>
+            </button>
+            <button class="color-btn" data-face="U" style="--c: #f7f5ee">
+              <span class="color-name">blanca</span>
+            </button>
           </div>
-          <div class="grid-cell" data-row="0" data-col="1">
-            <span class="cell-label">U·M</span>
-            <span class="cell-arrows">←→ ↑↓</span>
-          </div>
-          <div class="grid-cell corner" data-row="0" data-col="2">
-            <span class="cell-label">U·R</span>
-            <span class="cell-arrows">←→ ↑↓</span>
-          </div>
-          <div class="grid-cell corner" data-row="1" data-col="0">
-            <span class="cell-label">E·L</span>
-            <span class="cell-arrows">←→ ↑↓</span>
-          </div>
-          <div class="grid-cell corner" data-row="1" data-col="1">
-            <span class="cell-label">E·M</span>
-            <span class="cell-arrows">←→ ↑↓</span>
-          </div>
-          <div class="grid-cell corner" data-row="1" data-col="2">
-            <span class="cell-label">E·R</span>
-            <span class="cell-arrows">←→ ↑↓</span>
-          </div>
-          <div class="grid-cell corner" data-row="2" data-col="0">
-            <span class="cell-label">D·L</span>
-            <span class="cell-arrows">←→ ↑↓</span>
-          </div>
-          <div class="grid-cell" data-row="2" data-col="1">
-            <span class="cell-label">D·M</span>
-            <span class="cell-arrows">←→ ↑↓</span>
-          </div>
-          <div class="grid-cell corner" data-row="2" data-col="2">
-            <span class="cell-label">D·R</span>
-            <span class="cell-arrows">←→ ↑↓</span>
+          <div id="turn-controls">
+            <button class="turn-btn" data-dir="ccw">↺</button>
+            <button class="turn-btn" data-dir="cw">↻</button>
           </div>
         </div>
-        <div id="move-hint" class="move-hint"></div>
-        <div id="drag-preview" class="drag-preview"></div>
       </div>
       <div id="hud-root"></div>
       <div id="toast" role="alert" aria-live="polite" aria-atomic="true"></div>
