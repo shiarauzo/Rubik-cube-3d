@@ -162,188 +162,101 @@ html, body {
   transition: stroke-dashoffset 0.1s linear;
 }
 
-/* Grid overlay for layer selection */
-#grid-overlay {
+/* Color-based face control ------------------------------------------------- */
+#face-controls {
   position: absolute;
   inset: 0;
   display: none;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  gap: 2px;
-  padding: 8%;
   pointer-events: none;
 }
 
-#grid-overlay.active {
-  display: grid;
+#face-controls.active {
+  display: block;
 }
 
-.grid-cell {
-  border: 1.5px solid rgba(255, 255, 255, 0.25);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
-  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+/* Top bar: one button per cube color */
+#color-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 20%;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  gap: 3px;
+  padding: 4px 4px 0;
+}
+
+.color-btn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
   justify-content: center;
-  gap: 2px;
+  padding-bottom: 3px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 7px;
+  background: var(--c);
+  cursor: default;
+  transition: transform 0.1s, border-color 0.12s, box-shadow 0.12s;
 }
 
-.grid-cell .cell-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  line-height: 1;
-}
-
-.grid-cell .cell-arrows {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
-  line-height: 1;
-}
-
-/* Center cell - E·M (equator + middle slice) */
-.grid-cell[data-row="1"][data-col="1"] {
-  background: rgba(168, 85, 247, 0.15);
-  border-color: rgba(168, 85, 247, 0.4);
-}
-
-.grid-cell[data-row="1"][data-col="1"] .cell-label {
-  color: rgba(168, 85, 247, 0.9);
-}
-
-/* Corner cells can do both row and column moves */
-.grid-cell.corner {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.grid-cell.corner .cell-label {
-  font-size: 11px;
-}
-
-.grid-cell.corner .cell-arrows {
+.color-btn .color-name {
   font-size: 9px;
-}
-
-.grid-cell.highlight-row {
-  background: rgba(59, 130, 246, 0.25);
-  border-color: rgba(59, 130, 246, 0.7);
-}
-
-.grid-cell.highlight-row .cell-label,
-.grid-cell.highlight-row .cell-arrows {
-  color: #60a5fa;
-}
-
-.grid-cell.highlight-col {
-  background: rgba(249, 115, 22, 0.25);
-  border-color: rgba(249, 115, 22, 0.7);
-}
-
-.grid-cell.highlight-col .cell-label,
-.grid-cell.highlight-col .cell-arrows {
-  color: #fb923c;
-}
-
-.grid-cell.pinch-active {
-  background: rgba(34, 197, 94, 0.3);
-  border-color: rgba(34, 197, 94, 0.8);
-  transform: scale(0.95);
-}
-
-.grid-cell.pinch-active .cell-label,
-.grid-cell.pinch-active .cell-arrows {
-  color: #4ade80;
-}
-
-/* Move hint tooltip */
-.move-hint {
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 12px;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 500;
-  color: white;
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 0.15s;
-  pointer-events: none;
-  z-index: 15;
-}
-
-.move-hint.visible {
-  opacity: 1;
-}
-
-.move-hint .hint-row {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-}
-
-.move-hint .hint-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.move-hint .hint-arrow {
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.move-hint .hint-move {
-  font-family: 'JetBrains Mono', monospace;
   font-weight: 600;
-  color: #4ade80;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
-/* Drag preview - large arrow showing current move */
-.drag-preview {
+/* White face needs dark text to stay legible */
+.color-btn[data-face="U"] .color-name {
+  color: rgba(0, 0, 0, 0.7);
+  text-shadow: none;
+}
+
+.color-btn.selected {
+  transform: scale(0.96);
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5), 0 0 14px var(--c);
+}
+
+/* Bottom: turn direction buttons, shown once a face is selected */
+#turn-controls {
+  --c: #ffffff;
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 12px 20px;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(12px);
-  border-radius: 10px;
-  font-size: 24px;
-  font-weight: 700;
-  font-family: 'JetBrains Mono', monospace;
-  color: white;
-  opacity: 0;
-  transition: opacity 0.1s;
-  pointer-events: none;
-  z-index: 20;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 26%;
+  display: none;
+  gap: 8px;
+  padding: 0 6px 6px;
+}
+
+#turn-controls.active {
+  display: flex;
+}
+
+.turn-btn {
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  border: 2px solid var(--c);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 34px;
+  line-height: 1;
+  transition: transform 0.1s, background 0.12s;
 }
 
-.drag-preview.visible {
-  opacity: 1;
+.turn-btn.flash {
+  transform: scale(0.92);
+  background: var(--c);
+  color: #000;
 }
-
-.drag-preview .preview-move {
-  color: #4ade80;
-}
-
-.drag-preview .preview-arrow {
-  font-size: 28px;
-}
-
-.drag-preview.direction-left .preview-arrow { color: #60a5fa; }
-.drag-preview.direction-right .preview-arrow { color: #60a5fa; }
-.drag-preview.direction-up .preview-arrow { color: #fb923c; }
-.drag-preview.direction-down .preview-arrow { color: #fb923c; }
 
 /* HUD ---------------------------------------------------------------------- */
 

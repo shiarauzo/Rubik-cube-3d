@@ -1,6 +1,6 @@
 import type { GestureFrame, HandShape, Handedness, Landmark } from './types';
 import type { HandRotation } from './HandRotation';
-import type { GridManipulation } from './GridManipulation';
+import type { FaceControl } from './FaceControl';
 import type { Solver } from '../../solver/Solver';
 import type { MoveEngine } from '../../cube/MoveEngine';
 import type { CubeModel } from '../../cube/CubeModel';
@@ -17,11 +17,12 @@ export class TwoHandController {
   private state: ControllerState = 'IDLE';
   private solverChargeStart: number | null = null;
   private lastResetTime = 0;
+  private rotating = false;
   private static RESET_COOLDOWN_MS = 1500; // Prevent spam
 
   constructor(
     private handRotation: HandRotation,
-    private gridManipulation: GridManipulation,
+    private faceControl: FaceControl,
     private solver: Solver,
     private engine: MoveEngine,
     private model: CubeModel,
@@ -33,32 +34,84 @@ export class TwoHandController {
   ): void {
     const leftHand = frame.hands.find((h) => h.hand === 'Left');
     const rightHand = frame.hands.find((h) => h.hand === 'Right');
+    const now = performance.now();
 
-    // Check for solver gesture (both fists)
-    const bothFists = this.checkBothFists(leftHand, rightHand);
-
-    // State machine transitions
-    switch (this.state) {
-      case 'IDLE':
-        this.handleIdle(leftHand, rightHand, bothFists, landmarks);
-        break;
-
-      case 'ROTATION':
-        this.handleRotation(leftHand, rightHand, bothFists, landmarks);
-        break;
-
-      case 'MANIPULATION':
-        this.handleManipulation(leftHand, rightHand, bothFists, frame, landmarks);
-        break;
-
-      case 'SOLVER_CHARGING':
-        this.handleSolverCharging(bothFists);
-        break;
-
-      case 'SOLVING':
-        // Do nothing while solving - wait for completion
-        break;
+    // Reset gesture (both thumbs up) — recenters the cube view.
+    if (this.checkBothThumbsUp(leftHand, rightHand)) {
+      if (now - this.lastResetTime > TwoHandController.RESET_COOLDOWN_MS) {
+        this.handRotation.reset();
+        this.lastResetTime = now;
+        bus.emit('toast', { message: '👍 Vista reseteada - Cara frontal: F', kind: 'info' });
+      }
+      this.endRotation();
+      this.state = 'IDLE';
+      return;
     }
+
+    // Solver gesture (both fists) takes priority over everything else.
+    if (this.checkBothFists(leftHand, rightHand)) {
+      this.handleSolverCharging(now);
+      return;
+    }
+    if (this.state === 'SOLVER_CHARGING') {
+      // Fists released before charge completed — cancel.
+      this.state = 'IDLE';
+      this.solverChargeStart = null;
+    }
+    if (this.state === 'SOLVING') {
+      // Wait for the solve animation to finish.
+      return;
+    }
+
+    // Left hand → mechanical whole-cube rotation (pinch + drag).
+    this.processCubeRotation(leftHand, landmarks);
+
+    // Right hand → color-based face control (tap a color, then ↻/↺).
+    const rightOnly = rightHand ? [rightHand] : [];
+    this.faceControl.processFrame(rightOnly, landmarks);
+
+    // Derive the display state for the overlay / mode indicator.
+    if (this.rotating) {
+      this.state = 'ROTATION';
+    } else if (rightHand?.shape === 'pinch') {
+      this.state = 'MANIPULATION';
+    } else {
+      this.state = 'IDLE';
+    }
+  }
+
+  private processCubeRotation(
+    leftHand: HandShape | undefined,
+    landmarks: Map<Handedness, Landmark[]>,
+  ): void {
+    const lm = landmarks.get('Left');
+    if (leftHand?.shape === 'pinch' && lm) {
+      const point = this.getPinchPoint(lm);
+      if (!this.rotating) {
+        this.rotating = true;
+        this.handRotation.startDrag(point.x, point.y);
+      } else {
+        this.handRotation.updateDrag(point.x, point.y);
+      }
+    } else {
+      this.endRotation();
+    }
+  }
+
+  private endRotation(): void {
+    if (this.rotating) {
+      this.rotating = false;
+      this.handRotation.endDrag();
+    }
+  }
+
+  private getPinchPoint(landmarks: Landmark[]): { x: number; y: number } {
+    const thumb = landmarks[4];
+    const index = landmarks[8];
+    return {
+      x: (thumb.x + index.x) / 2,
+      y: (thumb.y + index.y) / 2,
+    };
   }
 
   private checkBothFists(left?: HandShape, right?: HandShape): boolean {
@@ -69,138 +122,15 @@ export class TwoHandController {
     return left?.shape === 'thumbUp' && right?.shape === 'thumbUp';
   }
 
-  private handleIdle(
-    leftHand: HandShape | undefined,
-    rightHand: HandShape | undefined,
-    bothFists: boolean,
-    landmarks: Map<Handedness, Landmark[]>,
-  ): void {
-    // Check for reset gesture (both thumbs up) with cooldown
-    const now = performance.now();
-    if (this.checkBothThumbsUp(leftHand, rightHand)) {
-      if (now - this.lastResetTime > TwoHandController.RESET_COOLDOWN_MS) {
-        this.handRotation.reset();
-        this.lastResetTime = now;
-        bus.emit('toast', { message: '👍 Vista reseteada - Cara frontal: F', kind: 'info' });
-      }
-      return;
-    }
-
-    // Priority: solver > manipulation > rotation
-    if (bothFists) {
+  private handleSolverCharging(now: number): void {
+    if (this.state !== 'SOLVER_CHARGING' && this.state !== 'SOLVING') {
       this.state = 'SOLVER_CHARGING';
-      this.solverChargeStart = performance.now();
-      this.handRotation.setEnabled(false);
-      this.gridManipulation.setActive(false);
-      return;
+      this.solverChargeStart = now;
+      this.endRotation();
     }
+    if (this.state !== 'SOLVER_CHARGING') return;
 
-    if (leftHand?.shape === 'pinch') {
-      this.state = 'MANIPULATION';
-      this.handRotation.setEnabled(false);
-      this.gridManipulation.setActive(true);
-      return;
-    }
-
-    if (leftHand?.shape === 'palmOut' || leftHand?.shape === 'palmIn') {
-      this.state = 'ROTATION';
-      this.handRotation.setEnabled(true);
-      this.gridManipulation.setActive(false);
-      // Process rotation immediately
-      this.handRotation.processFrame(landmarks, [leftHand, rightHand].filter(Boolean) as HandShape[]);
-      return;
-    }
-
-    // No active gesture - disable both
-    this.handRotation.setEnabled(false);
-    this.gridManipulation.setActive(false);
-  }
-
-  private handleRotation(
-    leftHand: HandShape | undefined,
-    rightHand: HandShape | undefined,
-    bothFists: boolean,
-    landmarks: Map<Handedness, Landmark[]>,
-  ): void {
-    // Check for reset gesture (both thumbs up)
-    const now = performance.now();
-    if (this.checkBothThumbsUp(leftHand, rightHand)) {
-      if (now - this.lastResetTime > TwoHandController.RESET_COOLDOWN_MS) {
-        this.handRotation.reset();
-        this.lastResetTime = now;
-        bus.emit('toast', { message: '👍 Vista reseteada - Cara frontal: F', kind: 'info' });
-      }
-      return;
-    }
-
-    // Check for mode transitions
-    if (bothFists) {
-      this.state = 'SOLVER_CHARGING';
-      this.solverChargeStart = performance.now();
-      this.handRotation.setEnabled(false);
-      return;
-    }
-
-    if (leftHand?.shape === 'pinch') {
-      this.state = 'MANIPULATION';
-      this.handRotation.setEnabled(false);
-      this.gridManipulation.setActive(true);
-      return;
-    }
-
-    // Left hand palmIn triggers snap
-    if (leftHand?.shape === 'palmIn') {
-      this.handRotation.processFrame(landmarks, [leftHand, rightHand].filter(Boolean) as HandShape[]);
-      return;
-    }
-
-    // Left hand palmOut continues rotation
-    if (leftHand?.shape === 'palmOut') {
-      this.handRotation.processFrame(landmarks, [leftHand, rightHand].filter(Boolean) as HandShape[]);
-      return;
-    }
-
-    // Left hand no longer in rotation gesture - return to idle
-    this.state = 'IDLE';
-    this.handRotation.setEnabled(false);
-  }
-
-  private handleManipulation(
-    leftHand: HandShape | undefined,
-    rightHand: HandShape | undefined,
-    bothFists: boolean,
-    _frame: GestureFrame,
-    landmarks: Map<Handedness, Landmark[]>,
-  ): void {
-    // Check for mode transitions
-    if (bothFists) {
-      this.state = 'SOLVER_CHARGING';
-      this.solverChargeStart = performance.now();
-      this.gridManipulation.setActive(false);
-      return;
-    }
-
-    // Left hand must maintain pinch to stay in manipulation mode
-    if (leftHand?.shape !== 'pinch') {
-      this.state = 'IDLE';
-      this.gridManipulation.setActive(false);
-      return;
-    }
-
-    // Only process right hand for grid manipulation
-    const rightOnlyHands = rightHand ? [rightHand] : [];
-    this.gridManipulation.processFrame(rightOnlyHands, landmarks);
-  }
-
-  private handleSolverCharging(bothFists: boolean): void {
-    if (!bothFists) {
-      // Cancelled - return to idle
-      this.state = 'IDLE';
-      this.solverChargeStart = null;
-      return;
-    }
-
-    const elapsed = performance.now() - (this.solverChargeStart ?? 0);
+    const elapsed = now - (this.solverChargeStart ?? now);
     if (elapsed >= GESTURE_CONFIG.SOLVER_CHARGE_TIME_MS) {
       this.triggerSolver();
     }
@@ -273,7 +203,7 @@ export class TwoHandController {
       case 'ROTATION':
         return 'ROTAR';
       case 'MANIPULATION':
-        return 'MANIPULAR';
+        return 'GIRAR CARA';
       case 'SOLVER_CHARGING':
         return 'CARGANDO...';
       case 'SOLVING':

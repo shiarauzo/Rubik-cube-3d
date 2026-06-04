@@ -1,35 +1,22 @@
 import type { CubeView } from '../../cube/CubeView';
-import type { Landmark, Handedness, HandShape } from './types';
 
-// Discrete rotation angles for each zone
-const FRONT = 0;
-const LEFT = Math.PI / 2;      // 90 degrees
-const RIGHT = -Math.PI / 2;    // -90 degrees
-const UP = -Math.PI / 4;       // -45 degrees tilt
-const DOWN = Math.PI / 4;      // 45 degrees tilt
+/**
+ * Whole-cube reorientation driven by a left-hand pinch + drag.
+ *
+ * The rotation is mechanical and discrete: each deliberate drag past a
+ * threshold snaps the cube 90° to the next face. The cube never moves on its
+ * own — it only reacts to an active drag, so simply turning the camera on (or
+ * showing an open hand) leaves the cube exactly where it was.
+ */
 
-// All possible discrete angles
-const Y_ANGLES = [FRONT, LEFT, RIGHT, Math.PI]; // 0, 90, -90, 180
-const X_ANGLES = [0, UP, DOWN];                  // 0, -45, 45
+// One mechanical step = 90°.
+const STEP = Math.PI / 2;
 
-// Zone thresholds (normalized 0-1 coordinates)
-const LEFT_ZONE = 0.35;
-const RIGHT_ZONE = 0.65;
-const UP_ZONE = 0.35;
-const DOWN_ZONE = 0.65;
+// How far the pinch must travel (normalized 0-1 coords) to commit one step.
+const DRAG_THRESHOLD = 0.1;
 
-/** Snap to nearest discrete angle */
-function snapToNearest(current: number, angles: number[]): number {
-  let nearest = angles[0];
-  let minDist = Math.abs(current - nearest);
-  for (const angle of angles) {
-    const dist = Math.abs(current - angle);
-    if (dist < minDist) {
-      minDist = dist;
-      nearest = angle;
-    }
-  }
-  return nearest;
+function clamp(v: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, v));
 }
 
 export class HandRotation {
@@ -37,73 +24,92 @@ export class HandRotation {
   private targetX = 0;
   private currentY = 0;
   private currentX = 0;
-  private enabled = true;
+  private enabled = false;
+
+  // Drag tracking (pinch midpoint, raw unmirrored coords)
+  private dragging = false;
+  private startX = 0;
+  private startY = 0;
+  private axisLocked: 'horizontal' | 'vertical' | null = null;
 
   constructor(private view: CubeView) {}
 
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
+    if (!enabled) this.endDrag();
   }
 
   isEnabled(): boolean {
     return this.enabled;
   }
 
-  processFrame(landmarks: Map<Handedness, Landmark[]>, hands?: HandShape[]): void {
+  /** Begin a drag gesture at the given pinch point. */
+  startDrag(x: number, y: number): void {
     if (!this.enabled) return;
+    this.dragging = true;
+    this.startX = x;
+    this.startY = y;
+    this.axisLocked = null;
+  }
 
-    const rightHand = landmarks.get('Right');
-    const leftHand = landmarks.get('Left');
+  /** End the current drag gesture (pinch released). */
+  endDrag(): void {
+    this.dragging = false;
+    this.axisLocked = null;
+  }
 
-    // Check if left hand is palmIn → snap to nearest face
-    const leftHandShape = hands?.find(h => h.hand === 'Left');
-    const shouldSnap = leftHand && leftHandShape?.shape === 'palmIn';
+  /**
+   * Update the drag. Once the pinch travels past the threshold the cube snaps
+   * 90° in that direction, and the drag origin resets so a longer drag rotates
+   * several faces in a row.
+   */
+  updateDrag(x: number, y: number): void {
+    if (!this.enabled || !this.dragging) return;
 
-    if (shouldSnap) {
-      // Snap to nearest face and stay still
-      const snappedY = snapToNearest(this.currentY, Y_ANGLES);
-      const snappedX = snapToNearest(this.currentX, X_ANGLES);
-      this.targetY = snappedY;
-      this.targetX = snappedX;
-      this.currentY = snappedY;
-      this.currentX = snappedX;
-      this.view.group.rotation.y = snappedY;
-      this.view.group.rotation.x = snappedX;
-      return; // Skip interpolation
-    } else if (!rightHand) {
-      // No right hand visible, keep current position
-    } else {
-      // Use wrist position (landmark 0) for tracking
-      const wrist = rightHand[0];
-      // Mirror X because video is flipped
-      const x = 1 - wrist.x;
-      const y = wrist.y;
+    const dx = x - this.startX;
+    const dy = y - this.startY;
 
-      // Determine horizontal zone (left, center, right)
-      if (x < LEFT_ZONE) {
-        this.targetY = LEFT;
-      } else if (x > RIGHT_ZONE) {
-        this.targetY = RIGHT;
-      } else {
-        this.targetY = FRONT;
-      }
-
-      // Determine vertical zone (up, center, down)
-      if (y < UP_ZONE) {
-        this.targetX = UP;
-      } else if (y > DOWN_ZONE) {
-        this.targetX = DOWN;
-      } else {
-        this.targetX = 0;
-      }
+    // Lock the axis on the first significant movement so a horizontal drag
+    // never accidentally tilts the cube and vice versa.
+    if (this.axisLocked === null) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < DRAG_THRESHOLD) return;
+      this.axisLocked = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
     }
 
-    // Smooth interpolation to target (easing)
-    const smoothing = 0.12;
+    if (this.axisLocked === 'horizontal') {
+      // Video is mirrored: raw dx > 0 means the hand visually moved left.
+      if (dx > DRAG_THRESHOLD) {
+        this.targetY += STEP; // drag left → next face on the left
+        this.resetOrigin(x, y);
+      } else if (dx < -DRAG_THRESHOLD) {
+        this.targetY -= STEP; // drag right → next face on the right
+        this.resetOrigin(x, y);
+      }
+    } else {
+      // Tilt is clamped to ±90° so the cube never flips fully over.
+      if (dy < -DRAG_THRESHOLD) {
+        this.targetX = clamp(this.targetX - STEP, -STEP, STEP); // drag up
+        this.resetOrigin(x, y);
+      } else if (dy > DRAG_THRESHOLD) {
+        this.targetX = clamp(this.targetX + STEP, -STEP, STEP); // drag down
+        this.resetOrigin(x, y);
+      }
+    }
+  }
+
+  private resetOrigin(x: number, y: number): void {
+    this.startX = x;
+    this.startY = y;
+  }
+
+  /**
+   * Ease the cube toward its target orientation. Called every frame so the
+   * snap animates smoothly even after the drag input stops arriving.
+   */
+  update(): void {
+    const smoothing = 0.18;
     this.currentY += (this.targetY - this.currentY) * smoothing;
     this.currentX += (this.targetX - this.currentX) * smoothing;
-
-    // Apply rotation
     this.view.group.rotation.y = this.currentY;
     this.view.group.rotation.x = this.currentX;
   }
@@ -115,5 +121,6 @@ export class HandRotation {
     this.currentY = 0;
     this.view.group.rotation.x = 0;
     this.view.group.rotation.y = 0;
+    this.endDrag();
   }
 }
